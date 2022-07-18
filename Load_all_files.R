@@ -34,24 +34,27 @@ m.mortality_by.y <- m.survival
 
 # logistic regression
 
-df1 <- as.data.frame(m.mortality)
+df.mortality <- as.data.frame(m.mortality)
 
 
 age_0 = 25
 sex_0 = 0
-year = 0 
+#year = 0 
 
 ###########################
 df <-df1
 
 
+# df.mortality, m.survival, m.mortality_by.y, outcome, age_0, sex_0
+
+f.survival.calc <- function(df.mortality, m.survival, m.mortality_by.y, outcome, age_0, sex_0){
+
 for(age_0 in seq(from = 25, to =75, by=10)){
   
   
-  
-df <- subset(df1, sex==sex_0 & age < (age_0 + 10) & age >= age_0)
+df <- subset(df.mortality, sex==sex_0 & age < (age_0 + 10) & age >= age_0)
 
-l.model <- lm(S1 ~ year, data =df)
+l.model <- lm(df[ ,outcome] ~ df[ ,year])
 coeff.model = l.model$coefficients
 b = coeff.model[[1]]
 a = coeff.model[[2]]
@@ -61,7 +64,7 @@ for(age_i in age_0:(age_0+9)){
   
 for(year in 1:10){
     
-    m.surv.m.S1[age_i,year] <- b + a*year
+   m.survival[age_i,year] <- b + a*year
     
     year = year +1 
   }
@@ -70,18 +73,26 @@ for(year in 1:10){
 }
 
 
-m.mortality_by.y[30:84, 1] <- (100 - m.surv.m.S1[30:84, 1])/100
+m.mortality_by.y[30:84, 1] <- (100 - m.survival[30:84, 1])/100
 
 for(i in 2:10){
-  m.mortality_by.y[30:84, i] <- (m.surv.m.S1[30:84, (i-1)] - m.surv.m.S1[30:84, i])/m.surv.m.S1[30:84, (i-1)]
+  m.mortality_by.y[30:84, i] <- (m.survival[30:84, (i-1)] - m.survival[30:84, i])/m.survival[30:84, (i-1)]
 }
 
 m.mortality_by.y <- m.mortality_by.y[30:84,] 
 
-m.mortality_by.y <- rbind(m.mortality_by.y, as.matrix(rep(m.mortality_by.y[54,1:10],16), nrow=16, ncol =10))
-
-rownames(m.mortality_by.y) <- 30:100
-
 m.mortality_by.y <- as.data.frame(m.mortality_by.y)
 
-m.mortality_by.y <- add_row(m.mortality_by.y, m.mortality_by.y[54,])
+for(i in 1:16){
+  m.mortality_by.y <- add_row(m.mortality_by.y, m.mortality_by.y[54,])
+  
+}
+rownames(m.mortality_by.y) <- 30:100
+
+m.mortality_by.y
+
+}
+
+
+f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S1", age_0=25, sex_0=0)
+  
