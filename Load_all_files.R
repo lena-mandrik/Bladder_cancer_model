@@ -21,78 +21,15 @@ if(cohort ==1){
   population[, "age"] <- cohort_age
 }
 
-#Load and process BC mortality data by age and sex for each stage
-m.mortality <- as.matrix(read.table("Data/BC_survival.txt", header = TRUE))
+#Load probabilities of BC mortality data by age, sex, and stage
 
-m.survival <- matrix(ncol= 10, nrow=100)
-row.names(m.survival) <- 1:100
-colnames(m.survival) <- 1:10
-
-m.surv.m.S1 <- m.surv.m.S2 <-m.surv.m.S3 <- m.surv.m.S4 <- m.surv.f.S1 <- m.surv.f.S2 <-m.surv.f.S3 <- m.surv.f.S4 <- m.survival  
-
-m.mortality_by.y <- m.survival
-
-# logistic regression
-
-df.mortality <- as.data.frame(m.mortality)
+list_of_file_names <- list.files(path = "Data/survival/", recursive = TRUE,
+                            pattern = ".txt$", 
+                            full.names = TRUE)
 
 
-age_0 = 25
-sex_0 = 0
-#year = 0 
+list_of_files <- lapply(list_of_file_names, read.table, sep = "\t", header =T)
 
-###########################
-df <-df1
+names(list_of_files) <- tools::file_path_sans_ext(basename(list_of_file_names))
 
 
-# df.mortality, m.survival, m.mortality_by.y, outcome, age_0, sex_0
-
-f.survival.calc <- function(df.mortality, m.survival, m.mortality_by.y, outcome, age_0, sex_0){
-
-for(age_0 in seq(from = 25, to =75, by=10)){
-  
-  
-df <- subset(df.mortality, sex==sex_0 & age < (age_0 + 10) & age >= age_0)
-
-l.model <- lm(df[ ,outcome] ~ df[ ,year])
-coeff.model = l.model$coefficients
-b = coeff.model[[1]]
-a = coeff.model[[2]]
-
-
-for(age_i in age_0:(age_0+9)){
-  
-for(year in 1:10){
-    
-   m.survival[age_i,year] <- b + a*year
-    
-    year = year +1 
-  }
-    age_i = age_i +1
-}
-}
-
-
-m.mortality_by.y[30:84, 1] <- (100 - m.survival[30:84, 1])/100
-
-for(i in 2:10){
-  m.mortality_by.y[30:84, i] <- (m.survival[30:84, (i-1)] - m.survival[30:84, i])/m.survival[30:84, (i-1)]
-}
-
-m.mortality_by.y <- m.mortality_by.y[30:84,] 
-
-m.mortality_by.y <- as.data.frame(m.mortality_by.y)
-
-for(i in 1:16){
-  m.mortality_by.y <- add_row(m.mortality_by.y, m.mortality_by.y[54,])
-  
-}
-rownames(m.mortality_by.y) <- 30:100
-
-m.mortality_by.y
-
-}
-
-
-f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S1", age_0=25, sex_0=0)
-  
