@@ -6,7 +6,10 @@
 rm(list = ls(all = TRUE))
 
 #Load required libraries
-
+library("survival")
+library("survminer")
+library("dplyr")
+library("vroom")
 
 ###Set random seed
 set.seed(10)
