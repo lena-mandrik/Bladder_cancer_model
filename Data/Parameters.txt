@@ -1,6 +1,11 @@
 Name	Mean	Distribution	Param1	Param2
-P.onset	0.5	2	0.0000001	1
-P.onset_low.risk	0.192	4	0.0000001	1
-RR.manufacture	1.99	3	1.22	3.26
-RR.past_smoke	2.04	3	1.85	2.25
-RR.current_smoke	3.47	3	3.07	3.91
+P.onset	0.0001	1	0.9998	9997.0002
+P.onset_low.risk	0.192	1	4765.58592	20055.17408
+RR.manufacture	1.99	3	0.688134639	0.250738367
+RR.past_smoke	2.04	3	0.712949808	0.049935759
+RR.current_smoke	3.47	3	1.244154594	0.061700065
+RR.All.Death.past_smoke	1.2	3	0.182321557	0.025531964
+RR.All.Death.current_smoke	2.76	3	1.01523068	0.009244009
+P.quit.smoke	0.0167	5	0.0167	0.000405237
+P.onset_age	0	4	1.000001	1.1
+P.onset_sex	1.25	4	1	1.5

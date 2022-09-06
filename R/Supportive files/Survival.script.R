@@ -59,7 +59,7 @@ f.survival.calc <- function(df.mortality, m.survival, m.mortality_by.y, outcome,
     }
  }
   
-  # Calculate the probability to die during the year based on the survival function, assuming the survival is 100% at year 0
+  # Calculate the probability to die during the first year based on the survival function, assuming the survival is 100% at year 0
   m.mortality_by.y[30:84, 1] <- (100 - m.survival[30:84, 1])/100
   
   for(i in 2:10){

@@ -27,4 +27,7 @@ cohort_age <- 30 #select starting age of cohort (hash out or set to anything if 
 #Select appropriate parameter set to use
 p.set <- ifelse(run_mode =="PSA", i, 1) 
 
+#Set up the model parameters according to current parameter set
+set_parameters(p.set)
+
 # Something else 
