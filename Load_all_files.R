@@ -29,13 +29,24 @@ list_of_file_names <- list.files(path = "Data/survival/", recursive = TRUE,
 
 
 list_of_files <- lapply(list_of_file_names, read.table, sep = "\t", header =T) #Add the files to the list
+
+list_of_files <- Map(read.table,list_of_file_names, sep = "\t", header =T) #Add the files to the list
+
 names(list_of_files) <- tools::file_path_sans_ext(basename(list_of_file_names))  # Save the names
+
+
+lapply(list_of_files, function(item){
+  colnames(item) <- c(1:10)
+  rownames(item) <- 30:100
+  return(item)
+})
+
 list2env(list_of_files,envir=.GlobalEnv) #Extract the files from the list
+
 
 #Load other cause mortality data
 OC_mort <- as.matrix(read.table("Data/OC_mortality.txt"))
-OC_mort_m <- as.matrix(OC_mort[,1]); OC_mort_f <- as.matrix(OC_mort[,2]) #extract matrices for males and females
-rownames(OC_mort_m) <- rownames(OC_mort_f) <- 1:101
+rownames(OC_mort) <- c(paste("0",c(1:101), sep = ""), paste("1",c(1:101), sep = ""))
 
 #Generate parameter sets for PSA, adjusted for cycle length
 Param_sets <- generate_parameters(Params, N_sets)
