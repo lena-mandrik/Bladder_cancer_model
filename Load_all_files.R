@@ -30,16 +30,16 @@ list_of_file_names <- list.files(path = "Data/survival/", recursive = TRUE,
 
 list_of_files <- lapply(list_of_file_names, read.table, sep = "\t", header =T) #Add the files to the list
 
-list_of_files <- Map(read.table,list_of_file_names, sep = "\t", header =T) #Add the files to the list
+#list_of_files <- Map(read.table,list_of_file_names, sep = "\t", header =T) #Add the files to the list
 
 names(list_of_files) <- tools::file_path_sans_ext(basename(list_of_file_names))  # Save the names
 
 
-lapply(list_of_files, function(item){
-  colnames(item) <- c(1:10)
-  rownames(item) <- 30:100
-  return(item)
-})
+#lapply(list_of_files, function(item){
+#  colnames(item) <- c(1:10)
+#  rownames(item) <- 30:100
+#  return(item)
+#})
 
 list2env(list_of_files,envir=.GlobalEnv) #Extract the files from the list
 
