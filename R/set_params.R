@@ -83,20 +83,20 @@ generate_parameters <- function(Params, N_sets){
 
 f.risk.calc <- function(pop) {
   
-#Calculate mean population attributes
+#Calculate mean population attributes.
+# Sex associated risk is the only calibrated parameter
+  
 mean.p_smoke <- sum(pop[, "current_smoke"] * pop[, "weighting"])/sum(pop[, "weighting"])
 mean.p_psmoke <- sum(pop[, "past_smoke"] * pop[, "weighting"])/sum(pop[, "weighting"])
 mean.p_occupation <- sum(pop[, "occupation"] * pop[, "weighting"])/sum(pop[, "weighting"])
 mean.p_sex <- sum(pop[, "sex"] * pop[, "weighting"])/sum(pop[, "weighting"])
 
-
 #Calculate individual BC risk by multiplying risks for each attribute
-
 pop[, "risk_score"] <- (RR.current_smoke^(pop[, "current_smoke"] - mean.p_smoke))*
   (RR.past_smoke ^ (pop[, "past_smoke"] - mean.p_psmoke))*
-  (RR.manufacture ^ (pop[, "occupation"] - mean.p_occupation))
+  (RR.manufacture ^ (pop[, "occupation"] - mean.p_occupation))*(P.onset_sex^(pop[, "sex"] - mean.p_sex))
 
-TP.BC_onset <- (P.onset*P.onset_age^(pop[, "age"] -30))*pop[, "risk_score"]*(P.onset_sex^(pop[, "sex"] - mean.p_sex))
+#TP.BC_onset <- (P.onset*P.onset_age^(pop[, "age"] -30))*pop[, "risk_score"]
 
 #check
 #no_smoke <- rep(0,nrow(pop))
@@ -106,6 +106,8 @@ TP.BC_onset <- (P.onset*P.onset_age^(pop[, "age"] -30))*pop[, "risk_score"]*(P.o
 for (variable in ls()) {
   assign(variable, get(variable), envir = .GlobalEnv)
 }
+
+pop
 
 }
 

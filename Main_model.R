@@ -46,6 +46,7 @@ if(run_mode == "PSA"){
 
 ###Load up all the functions and all the data for use in the model
 ## Here the loops will be
+i=1
 
 #Select appropriate parameter set to use
 p.set <- ifelse(run_mode =="PSA", i, 1) 
@@ -53,7 +54,7 @@ p.set <- ifelse(run_mode =="PSA", i, 1)
 #Set up the model parameters according to current parameter set
 set_parameters(p.set)
 
-# Set the model baseline population
+# Set the model baseline population risk
 pop <- f.risk.calc(population)
 
 

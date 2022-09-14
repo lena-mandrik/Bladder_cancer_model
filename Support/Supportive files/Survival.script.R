@@ -6,7 +6,7 @@
 
 
 #Load and process BC mortality data by age and sex for each stage
-m.mortality <- as.matrix(read.table("Support Data/BC_survival.txt", header = TRUE)) # The age in the database reflects the start age up to thenext threshold
+m.mortality <- as.matrix(read.table("Support/Support Data/survival/BC_survival.txt", header = TRUE)) # The age in the database reflects the start age up to thenext threshold
 
 # Create empty matrices to gather survival data and to convert it to p. to survive till the next year
 m.survival <- matrix(ncol= 10, nrow=100)
@@ -87,18 +87,21 @@ S2_f <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S
 S3_f <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S3", sex_0=0)
 S4_f <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S4", sex_0=0)
 
-write.table(S1_f,"Data/S1_f.txt", sep = "\t")
-write.table(S2_f,"Data/S2_f.txt", sep = "\t")
-write.table(S3_f,"Data/S3_f.txt", sep = "\t")
-write.table(S4_f,"Data/S4_f.txt", sep = "\t")
-
 
 S1_m <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S1", sex_0=1)
 S2_m <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S2", sex_0=1)
 S3_m <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S3", sex_0=1)
 S4_m <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S4", sex_0=1)
 
-write.table(S1_m,"Data/S1_m.txt", sep = "\t")
-write.table(S2_m,"Data/S2_m.txt", sep = "\t")
-write.table(S3_m,"Data/S3_m.txt", sep = "\t")
-write.table(S4_m,"Data/S4_m.txt", sep = "\t")
+S1 <- rbind(S1_f, S1_m)
+S2 <- rbind(S2_f, S2_m)
+S3 <- rbind(S4_f, S3_m)
+S4 <- rbind(S4_f, S4_m)
+
+rownames(S1) <- rownames(S2) <-rownames(S3) <-rownames(S4) <-c(paste("1",c(30:100), sep = ""), paste("0",c(30:100), sep = ""))
+
+
+write.table(S1,"Data/survival/S1.txt", sep = "\t")
+write.table(S2,"Data/survival/S2.txt", sep = "\t")
+write.table(S3,"Data/survival/S3.txt", sep = "\t")
+write.table(S4,"Data/survival/S4.txt", sep = "\t")

@@ -34,18 +34,26 @@ list_of_files <- lapply(list_of_file_names, read.table, sep = "\t", header =T) #
 
 names(list_of_files) <- tools::file_path_sans_ext(basename(list_of_file_names))  # Save the names
 
-
-#lapply(list_of_files, function(item){
-#  colnames(item) <- c(1:10)
-#  rownames(item) <- 30:100
-#  return(item)
-#})
-
 list2env(list_of_files,envir=.GlobalEnv) #Extract the files from the list
 
 
 #Load other cause mortality data
 OC_mort <- as.matrix(read.table("Data/OC_mortality.txt"))
+rownames(OC_mort) <- c(paste("0",c(1:101), sep = ""), paste("1",c(1:101), sep = ""))
+
+# Load bladder cancer mortality
+BC.mort1 <- matrix(0, ncol = 1, nrow = 142)
+BC.mort2 <- matrix(0, ncol = 60, nrow = 142)
+BC.1.mort <- cbind(BC.mort1, as.matrix(S1), BC.mort2)
+BC.2.mort <- cbind(BC.mort1, as.matrix(S2), BC.mort2)
+BC.3.mort <- cbind(BC.mort1, as.matrix(S3), BC.mort2)
+BC.4.mort <- cbind(BC.mort1, as.matrix(S4), BC.mort2)
+
+colnames(BC.1.mort) <- colnames(BC.2.mort) <- colnames(BC.3.mort) <- colnames(BC.4.mort) <- c(0:70)
+rownames(BC.1.mort) <- rownames(BC.2.mort) <- rownames(BC.3.mort) <- rownames(BC.4.mort) <- c(paste("0",c(30:100), sep = ""), paste("1",c(30:100), sep = ""))
+
+#Load other cause mortality data
+OC_mort <- as.matrix(read.table("data/OC_Mort.txt"))
 rownames(OC_mort) <- c(paste("0",c(1:101), sep = ""), paste("1",c(1:101), sep = ""))
 
 #Generate parameter sets for PSA, adjusted for cycle length
@@ -59,7 +67,7 @@ Param.names <- colnames(Param_sets)
 # Param_sets[1:N_sets, 1:49] <- Corr_param_sets[1:N_sets, 1:49]
 
 #Specify health states
-states <- c("ND", "LG", "HG_St1", "HG_St2", "HG_St3", "HG_St4", "Diagnosed", "DeathBC", "DeathOC")
+states <- c("ND", "LG", "HG_St1", "HG_St2", "HG_St3", "HG_St4", "Diagnosed_sympt", "DeathBC", "DeathOC")
 v.n <- c(1:9)
 n.s   <- length(states)  # the number of health states
 # State 1. no disease (ND)
