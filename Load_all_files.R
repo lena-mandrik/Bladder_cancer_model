@@ -30,8 +30,6 @@ list_of_file_names <- list.files(path = "Data/survival/", recursive = TRUE,
 
 list_of_files <- lapply(list_of_file_names, read.table, sep = "\t", header =T) #Add the files to the list
 
-#list_of_files <- Map(read.table,list_of_file_names, sep = "\t", header =T) #Add the files to the list
-
 names(list_of_files) <- tools::file_path_sans_ext(basename(list_of_file_names))  # Save the names
 
 list2env(list_of_files,envir=.GlobalEnv) #Extract the files from the list
@@ -52,9 +50,6 @@ BC.4.mort <- cbind(BC.mort1, as.matrix(S4), BC.mort2)
 colnames(BC.1.mort) <- colnames(BC.2.mort) <- colnames(BC.3.mort) <- colnames(BC.4.mort) <- c(0:70)
 rownames(BC.1.mort) <- rownames(BC.2.mort) <- rownames(BC.3.mort) <- rownames(BC.4.mort) <- c(paste("0",c(30:100), sep = ""), paste("1",c(30:100), sep = ""))
 
-#Load other cause mortality data
-OC_mort <- as.matrix(read.table("data/OC_Mort.txt"))
-rownames(OC_mort) <- c(paste("0",c(1:101), sep = ""), paste("1",c(1:101), sep = ""))
 
 #Generate parameter sets for PSA, adjusted for cycle length
 Param_sets <- generate_parameters(Params, N_sets)
