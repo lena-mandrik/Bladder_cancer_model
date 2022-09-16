@@ -65,6 +65,7 @@ Param.names <- colnames(Param_sets)
 states <- c("ND", "LG", "HG_St1", "HG_St2", "HG_St3", "HG_St4", "Diagnosed_sympt", "DeathBC", "DeathOC")
 v.n <- c(1:9)
 n.s   <- length(states)  # the number of health states
+
 # State 1. no disease (ND)
 # State 2. low grade (LG)
 # state 3. high grade (HG) Stage 1 (HG_St1)

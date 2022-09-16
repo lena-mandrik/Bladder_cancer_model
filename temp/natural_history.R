@@ -61,20 +61,63 @@ TP
 
 }
 
-Mean.t.StI.StII 
+
+
+ 
+ #' @details
+ #' This function selects the set of transition probabilities that are relevant for each individual given their current health state (probabilities at time t)
+ #' @params
+ #' m.M: vector containing current health state for each individual
+ #' TP: matrix of individualised transition probabilities for each transition
+ #' @return matrix of transition probabilities for each individual
+ #' 
+ #Probs <- function(m.M, TP) {    
+
+ # M_it:    health state occupied by individual i at cycle t (character variable) 
+ 
+
+ a.p.it <- array(data = NA, dim = c(n.i, n.s, n.s)) # create array of state transition probabilities   
+ 
+ # update m.p.it with the appropriate probabilities (for now there is no probability to die from BC except you are in Clinical state)
+ 
+ a.p.it[, 1,]  <- matrix(nrow = n.i, ncol = n.s, c(1 - TP[, "TP.BC_onset"] - TP[, "TP.OC"] - TP[, "TP.NormToA"], TP[, "TP.NormToLR"], rep(0, n.i), TP[, "TP.NormToA"], rep(0,4*n.i), TP[, "TP.OC"]))
+ # Transition probabilities in the state No cancer (STATE 1)
+ 
+ a.p.it[, 2,]  <- matrix(nrow = n.i, ncol = n.s, c(rep(0, n.i), 1 - TP[, "TP.LRtoHR"] - TP[, "TP.OC"], TP[, "TP.LRtoHR"], rep(0, 5*n.i), TP[, "TP.OC"]))
+ # Transition probabilities in the state low risk adenoma (STATE 2)
+ 
+ a.p.it[, 3,]   <- matrix(nrow = n.i, ncol = n.s, c(rep(0,n.i*2), 1 - TP[, "TP.HRtoCRCA"] - TP[, "TP.OC"], TP[, "TP.HRtoCRCA"], rep(0, 4*n.i), TP[, "TP.OC"]))  # transition probabilities when sick   
+ # Transition probabilities in the state high risk adenoma (sTATE 3)
+ 
+ a.p.it[, 4,]   <- matrix(nrow = n.i, ncol = n.s, c(rep(0,n.i*3), 1  - TP[, "TP.AtoB"] - TP[, "TP.CRC.A.mort"] - TP[, "TP.OC"], TP[, "TP.AtoB"], rep(0,n.i*2), TP[, "TP.CRC.A.mort"], TP[, "TP.OC"]))
+ # Transition probabilities in the state proximal preclinical cancer phase I (or A by Duke) (STATE 4)
+ 
+ a.p.it[, 5,]   <- matrix(nrow = n.i, ncol = n.s, c(rep(0,n.i*4), 1  - TP[, "TP.BtoC"] - TP[, "TP.CRC.B.mort"] - TP[, "TP.OC"], TP[, "TP.BtoC"], rep(0,n.i), TP[, "TP.CRC.B.mort"], TP[, "TP.OC"]))
+ # Transition probabilities in the state proximal preclinical cancer phase II (or B by Duke) (STATE 5)
+ 
+ a.p.it[, 6,]   <- matrix(nrow = n.i, ncol = n.s, c(rep(0,n.i*5), 1 - TP[, "TP.CtoD"] - TP[, "TP.CRC.C.mort"] - TP[, "TP.OC"], TP[, "TP.CtoD"], TP[, "TP.CRC.C.mort"], TP[, "TP.OC"]))
+ # Transition probabilities in the state proximal preclinical cancer phase III (or C by Duke) (STATE 6)
+ 
+ a.p.it[, 7,]   <- matrix(nrow = n.i, ncol = n.s, c(rep(0,n.i*6), 1 - TP[, "TP.CRC.D.mort"] - TP[, "TP.OC"], TP[, "TP.CRC.D.mort"], TP[, "TP.OC"]))
+ # Transition probabilities in the state proximal preclinical cancer phase IV (or D by Duke) (STATE 7)
+ 
+ a.p.it[, 8,]   <- matrix(nrow = n.i, ncol = n.s, c(rep(0,7), 1, 0), byrow = TRUE)
+ # Transition probabilities in the state death from CRC (STATE 8)
+ 
+ a.p.it[, 9,]   <- matrix(nrow = n.i, ncol = n.s,  c(rep(0,8),1), byrow = TRUE)
+
+# Add to the TP sampling of the time to the next stage and allocation of the stages for everyone who has cancer onset
+
+w_mean =4
+shape =1.5
+Mean.t.StI.StII  
 Mean.t.StII.StIII 
 Mean.t.StIII.StIV
 
 shape.t.StI.StII <- shape.t.StII.StIII <- shape.t.StIII.StIV <- 1.001 
 
 
-
-# Add to the TP sampling of the time to the next stage and allocation of the stages for everyone who has cancer onset
-
-w_mean =4
-shape =1.5
-
-f.stage <- function(w_mean, shape){
+ f.Weibull.sample <- function(w_mean, shape){
   scale = w_mean/gamma(1+1/shape)
   
   time_to_state <- rweibull(1, shape, scale)
@@ -83,4 +126,37 @@ f.stage <- function(w_mean, shape){
   
 }
 
-f.stage(w_mean, shape.t.StI.StII)
+f.stage <- function(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.t.StII.StIII, 
+                    Mean.t.StIII.StIV, shape.t.StIII.StIV){
+  
+  T.onsetToStage2 <- f.Weibull.sample(Mean.t.StI.StII, shape.t.StI.StII)
+  T.Stage3 <- f.Weibull.sample(Mean.t.StII.StIII, shape.t.StII.StIII)
+  T.Stage4 <- f.Weibull.sample(Mean.t.StIII.StIV, shape.t.StIII.StIV)
+  
+  T.onsetToStage3 <- T.onsetToStage2+T.Stage3
+  T.onsetToStage4 <- T.onsetToStage3+T.Stage4
+  v.Stages <- c(T.onsetToStage2, T.onsetToStage3, T.onsetToStage4)
+  
+  v.Stages
+  
+}
+
+
+#create a matrix for all people in the dataset with the time they get each stage if they get invasive cancer
+
+m.BC.T.to.Stage <- matrix(nrow = n.i, ncol = 3)
+colnames(m.BC.Stage) <-c("T.onsetToStage2", "T.onsetToStage3", "T.onsetToStage4")
+
+
+
+m.BC.T.to.Stage <- mapply(m.BC.T.to.Stage, FUN =f.stage, Mean.t.StI.StII=Mean.t.StI.StII, 
+                         shape.t.StI.StII=shape.t.StI.StII, 
+                         Mean.t.StII.StIII =Mean.t.StII.StIII, 
+                         shape.t.StII.StIII =shape.t.StII.StIII, 
+                         Mean.t.StIII.StIV = Mean.t.StIII.StIV,
+                         shape.t.StIII.StIV = shape.t.StIII.StIV)
+
+f.stage(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.t.StII.StIII, 
+        Mean.t.StIII.StIV, shape.t.StIII.StIV)
+m.State
+m.Diag[ ,"yr_onset"] ==trunc(T.onsetToStage2)

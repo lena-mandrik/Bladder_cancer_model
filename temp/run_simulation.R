@@ -36,7 +36,7 @@
   
   #Create another matrix for current diagnostic information
   m.Diag <- matrix(0, nrow = n.i, ncol = 8)
-  colnames(m.Diag) <- c("BC_diag", "sympt_diag", "screen_diag", "new_diag",
+  colnames(m.Diag) <- c("BC_state", "sympt_diag", "screen_diag", "new_diag",
                         "age_diag", "stage_diag", "yr_onset", "yr_diag")
   
   #Create an array to gather screening and surveillance information for each cycle
