@@ -108,15 +108,16 @@ TP
 
 # Add to the TP sampling of the time to the next stage and allocation of the stages for everyone who has cancer onset
 
-w_mean =4
-shape =1.5
+
 Mean.t.StI.StII  
 Mean.t.StII.StIII 
 Mean.t.StIII.StIV
 
 shape.t.StI.StII <- shape.t.StII.StIII <- shape.t.StIII.StIV <- 1.001 
 
-
+#' @details
+#' This function uses the mean and the shape to calculate the scale and sample from the Weibull distribution 
+#' 
  f.Weibull.sample <- function(w_mean, shape){
   scale = w_mean/gamma(1+1/shape)
   
@@ -126,6 +127,14 @@ shape.t.StI.StII <- shape.t.StII.StIII <- shape.t.StIII.StIV <- 1.001
   
 }
 
+
+ #' @details
+ #' This function returns a time from onset to the Stage 2,3, and 4 for each person in the model
+ #' @params
+ #' Mean.t. - mean time from each stage till the next one. Based on a fixed input from a qualitative study
+ #' shape.t. - a calibrated shape for each Weibull distribution for each parameter
+ #' @return matrix of transition probabilities for each individual
+ 
 f.stage <- function(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.t.StII.StIII, 
                     Mean.t.StIII.StIV, shape.t.StIII.StIV){
   
@@ -149,7 +158,7 @@ colnames(m.BC.Stage) <-c("T.onsetToStage2", "T.onsetToStage3", "T.onsetToStage4"
 
 
 
-m.BC.T.to.Stage <- mapply(m.BC.T.to.Stage, FUN =f.stage, Mean.t.StI.StII=Mean.t.StI.StII, 
+m.BC.T.to.Stage <- apply(m.BC.T.to.Stage, 1, FUN =f.stage, Mean.t.StI.StII=Mean.t.StI.StII, 
                          shape.t.StI.StII=shape.t.StI.StII, 
                          Mean.t.StII.StIII =Mean.t.StII.StIII, 
                          shape.t.StII.StIII =shape.t.StII.StIII, 

@@ -28,15 +28,15 @@
   m.E[, 1] <- replace(m.E[, 1], m.E[, 1] <=(-0.594), -0.594) # if EQ-5D under -0.594 reset to -0.594
   
   # create another matrix capturing the current health state for each individual
-  m.State <- matrix(0, nrow = n.i, ncol = n.s)
-  colnames(m.State) <- states
+  m.State <- matrix(0, nrow = n.i, ncol = 8)
+  colnames(m.State) <- c("NoBC", "BC_LG", "DeathOC", "St1_HG", "St2_HG", "St3_HG", "St4_HG", "Death_BC")
   for(n in 1:n.s) {
     m.State[, n] <- replace(m.State[, n], m.M[, 1] ==n, 1)
   }
   
   #Create another matrix for current diagnostic information
-  m.Diag <- matrix(0, nrow = n.i, ncol = 8)
-  colnames(m.Diag) <- c("BC_state", "sympt_diag", "screen_diag", "new_diag",
+  m.Diag <- matrix(0, nrow = n.i, ncol = 9)
+  colnames(m.Diag) <- c("BC_state", "BC_diag", "sympt_diag", "screen_diag", "new_diag",
                         "age_diag", "stage_diag", "yr_onset", "yr_diag")
   
   #Create an array to gather screening and surveillance information for each cycle
@@ -48,9 +48,9 @@
   rownames(m.Out) <- out_names
   colnames(m.Out) <- c(0:n.t)
   
-  
+  t=1
   # loop to run the model over time
-  for(t in 1:n.t) {
+  #for(t in 1:n.t) {
     
     #Natural History
     TP <- calc.indiv.TPs(pop, m.Diag, m.State) #calculate new individualised transition probabilities for each health state
@@ -58,6 +58,14 @@
     m.p <- Probs(m.M[, t], TP) #calculate transition probabilities at cycle t
     
     m.M[, t+1] <- samplev(m.p, m.Rand, t) #Sample the next health state and store it in the Matrix m.M numerically
+    
+    m.Diag[,"yr_onset"] <- replace( m.Diag[,"yr_onset"], m.M[, t+1] ==3 & m.M[, t] != 3, 1)
+    
+    m.M[, t+1] <- replace(m.M[, t+1], m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage2"]==m.Diag[,"yr_onset"], 4)
+    m.M[, t+1] <- replace(m.M[, t+1], m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage3"]==m.Diag[,"yr_onset"], 5)
+    m.M[, t+1] <- replace(m.M[, t+1], m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage4"]==m.Diag[,"yr_onset"], 6)
+    
+    
     
     # Update the matrix with the health state numbers with either 0 or 1 depending if it is equal to the sampled state
     m.State[] <- 0

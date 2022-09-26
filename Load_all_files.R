@@ -62,8 +62,8 @@ Param.names <- colnames(Param_sets)
 # Param_sets[1:N_sets, 1:49] <- Corr_param_sets[1:N_sets, 1:49]
 
 #Specify health states
-states <- c("ND", "LG", "HG_St1", "HG_St2", "HG_St3", "HG_St4", "Diagnosed_sympt", "DeathBC", "DeathOC")
-v.n <- c(1:9)
+states <- c("NoBC", "BC_LG", "BC_HG", "DeathOC")
+v.n <- c(1:4)
 n.s   <- length(states)  # the number of health states
 
 # State 1. no disease (ND)
@@ -85,3 +85,54 @@ v.dwe <- 1 / (1 + d.e) ^ (0:n.t)   # calculate the QALY discount weight based on
 out_names <- c("TOTAL_COSTS", "BC_COSTS", "SCREEN_COSTS", "SURV_COSTS", "HARM_COSTS", 
                "QALYS", "LYS", "HG_St1_SYMPT", "HG_St2_SYMPT", "HG_St3_SYMPT", "HG_St4_SYMPT", "HG_St1_SCRN", "HG_St2_SCRN", 
                "HG_St3_SCRN", "HG_St4_SCRN", "LG_SCRN", "HG_St1_MORT", "HG_St2_MORT", "HG_St3_MORT", "HG_St4_MORT", "SCREEN_INVITE", "SCREEN_RESPOND", "SCREEN_FOLLOWED")
+
+
+
+########################################################
+## Functions to allocate the time to stage at diagnosis for each person in HSE
+
+
+shape.t.StI.StII <- shape.t.StII.StIII <- shape.t.StIII.StIV <- 1.001 
+
+#' @details
+#' This function uses the mean and the shape to calculate the scale and sample from the Weibull distribution 
+
+f.Weibull.sample <- function(w_mean, shape){
+  scale = w_mean/gamma(1+1/shape)
+  
+  time_to_state <- rweibull(1, shape, scale)
+  
+  time_to_state
+  
+}
+
+
+#' @details
+#' This function returns a time from onset to the Stage 2,3, and 4 for each person in the model
+#' @params
+#' Mean.t. - mean time from each stage till the next one. Based on a fixed input from a qualitative study
+#' shape.t. - a calibrated shape for each Weibull distribution for each parameter
+#' @return matrix of transition probabilities for each individual
+
+f.stage <- function(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.t.StII.StIII, 
+                    Mean.t.StIII.StIV, shape.t.StIII.StIV){
+  
+  T.onsetToStage2 <- f.Weibull.sample(Mean.t.StI.StII, shape.t.StI.StII)
+  T.Stage3 <- f.Weibull.sample(Mean.t.StII.StIII, shape.t.StII.StIII)
+  T.Stage4 <- f.Weibull.sample(Mean.t.StIII.StIV, shape.t.StIII.StIV)
+  
+  T.onsetToStage3 <- T.onsetToStage2+T.Stage3
+  T.onsetToStage4 <- T.onsetToStage3+T.Stage4
+  v.Stages <- c(T.onsetToStage2, T.onsetToStage3, T.onsetToStage4)
+  
+  v.Stages
+  
+}
+
+
+#create a matrix for all people in the dataset with the time they get each stage if they get invasive cancer
+
+m.BC.T.to.Stage <- matrix(nrow = n.i, ncol = 3)
+colnames(m.BC.T.to.Stage) <-c("T.onsetToStage2", "T.onsetToStage3", "T.onsetToStage4")
+rownames(m.BC.T.to.Stage) <- 1:n.i
+
