@@ -111,9 +111,11 @@ pop
 
 }
 
-### Functions for adjust other cause mortality based on a smoking status ###
 
 #' @details
 #' This function calculates individual other cause mortality based on the risk factors 
 #' @params
 #' pop: popula
+#' 
+ #Set up random number array for each individual
+m.Rand <- generate_random()

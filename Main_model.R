@@ -10,21 +10,22 @@ library("survival")
 library("survminer")
 library("dplyr")
 library("vroom")
+library("purrr")
 
 ###Set random seed
 set.seed(10)
 
 
 ###Set up the Global Parameters
-run_mode <- "PSA" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag only), "Deterministic" (m.Out only), "PSA" (m.Out only)
+run_mode <- "Deterministic" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag only), "Deterministic" (m.Out only), "PSA" (m.Out only)
 cohort <- 1 # 1 = all individuals start model at same age (cohort), 0 = individuals start in model at true (HSE) age
 cohort_age <- 50 #select starting age of cohort (hash out or set to anything if not using cohort)
 n.loops <- 5 # The number of model loops/PSA loops to run 
 cl <- 1  # The cycle length (years) 
-n.t   <- if(cohort==1){100-cohort_age}  # The number of cycles to run 
+n.t   <- if(cohort==1){100-cohort_age}else{70}  # The number of cycles to run 
 d.c <- 0.035 # The discount rate for costs
 d.e <- 0.035 # The discount rate for effects
-N_sets <- if(run_mode =="PSA"){n.loops} #Number of parameter sets required (for PSA). Minimum value = 1 (mean parameter values); maximum value = 1651 (number of calibrated correlated param sets)
+N_sets <- if(run_mode =="PSA"){n.loops}else{1} #Number of parameter sets required (for PSA). Minimum value = 1 (mean parameter values); maximum value = 1651 (number of calibrated correlated param sets)
 
 
 #score_age <- 40  #(Default = 40). Age at which known family history assigned and CRC risk score is calculated. 
@@ -57,6 +58,13 @@ set_parameters(p.set)
 # Set the model baseline population risk
 pop <- f.risk.calc(population)
 
+# Allocate the time to stage at diagnosis for each person in HSE
+##!! Needs to be replaced later to avoid loops (apply or map)
 
+for (i in 1:n.i){
+  m.BC.T.to.Stage[i,] <- f.stage(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.t.StII.StIII, 
+                                 Mean.t.StIII.StIV, shape.t.StIII.StIV)
+}
+m.BC.T.to.Stage <-round(m.BC.T.to.Stage)
 
 # Something else 

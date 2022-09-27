@@ -63,8 +63,11 @@ Param.names <- colnames(Param_sets)
 
 #Specify health states
 states <- c("NoBC", "BC_LG", "BC_HG", "DeathOC")
+states_long <- c("NoBC", "BC_LG", "St1_HG", "DeathOC", "St2_HG","St3_HG","St4_HG","DeathBC")
 v.n <- c(1:4)
-n.s   <- length(states)  # the number of health states
+n.s   <- length(states)  # the number of health states modelled as states
+n.s_long   <- length(states_long)  # the number of all health states 
+
 
 # State 1. no disease (ND)
 # State 2. low grade (LG)
@@ -136,3 +139,13 @@ m.BC.T.to.Stage <- matrix(nrow = n.i, ncol = 3)
 colnames(m.BC.T.to.Stage) <-c("T.onsetToStage2", "T.onsetToStage3", "T.onsetToStage4")
 rownames(m.BC.T.to.Stage) <- 1:n.i
 
+
+
+#' @details
+#' This function sets up an array of random numbers
+#' @params
+#' @return an array of random numbers for each event, person and time cycle
+generate_random <- function() {
+  events <- c("PROBS", "SYMPT", "FIT_UPTK", "Screen_UPTK","Diag_UPTK")
+  array(runif(n.i * length(events) * n.t), dim = c(n.i, length(events), n.t), dimnames = list(NULL, events, NULL))
+} 
