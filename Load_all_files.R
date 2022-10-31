@@ -20,6 +20,8 @@ if(cohort ==1){
   population[, "age"] <- cohort_age
 }
 
+
+
 #Load probabilities of BC mortality data by age, sex, and stage (as separate files to avoid big matrices)
 #(probability assumed to be 0 after 10 years, and 0 if undiagnosed apart from stage IV)
 
@@ -63,7 +65,7 @@ Param.names <- colnames(Param_sets)
 
 #Specify health states
 states <- c("NoBC", "BC_LG", "BC_HG", "DeathOC")
-states_long <- c("NoBC", "BC_LG", "St1_HG", "DeathOC", "St2_HG","St3_HG","St4_HG","DeathBC")
+states_long <- c("NoBC", "BC_LG","St1_HG",  "DeathOC","St2_HG","St3_HG","St4_HG","DeathBC")
 v.n <- c(1:4)
 n.s   <- length(states)  # the number of health states modelled as states
 n.s_long   <- length(states_long)  # the number of all health states 
@@ -91,61 +93,4 @@ out_names <- c("TOTAL_COSTS", "BC_COSTS", "SCREEN_COSTS", "SURV_COSTS", "HARM_CO
 
 
 
-########################################################
-## Functions to allocate the time to stage at diagnosis for each person in HSE
 
-
-shape.t.StI.StII <- shape.t.StII.StIII <- shape.t.StIII.StIV <- 1.001 
-
-#' @details
-#' This function uses the mean and the shape to calculate the scale and sample from the Weibull distribution 
-
-f.Weibull.sample <- function(w_mean, shape){
-  scale = w_mean/gamma(1+1/shape)
-  
-  time_to_state <- rweibull(1, shape, scale)
-  
-  time_to_state
-  
-}
-
-
-#' @details
-#' This function returns a time from onset to the Stage 2,3, and 4 for each person in the model
-#' @params
-#' Mean.t. - mean time from each stage till the next one. Based on a fixed input from a qualitative study
-#' shape.t. - a calibrated shape for each Weibull distribution for each parameter
-#' @return matrix of transition probabilities for each individual
-
-f.stage <- function(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.t.StII.StIII, 
-                    Mean.t.StIII.StIV, shape.t.StIII.StIV){
-  
-  T.onsetToStage2 <- f.Weibull.sample(Mean.t.StI.StII, shape.t.StI.StII)
-  T.Stage3 <- f.Weibull.sample(Mean.t.StII.StIII, shape.t.StII.StIII)
-  T.Stage4 <- f.Weibull.sample(Mean.t.StIII.StIV, shape.t.StIII.StIV)
-  
-  T.onsetToStage3 <- T.onsetToStage2+T.Stage3
-  T.onsetToStage4 <- T.onsetToStage3+T.Stage4
-  v.Stages <- c(T.onsetToStage2, T.onsetToStage3, T.onsetToStage4)
-  
-  v.Stages
-  
-}
-
-
-#create a matrix for all people in the dataset with the time they get each stage if they get invasive cancer
-
-m.BC.T.to.Stage <- matrix(nrow = n.i, ncol = 3)
-colnames(m.BC.T.to.Stage) <-c("T.onsetToStage2", "T.onsetToStage3", "T.onsetToStage4")
-rownames(m.BC.T.to.Stage) <- 1:n.i
-
-
-
-#' @details
-#' This function sets up an array of random numbers
-#' @params
-#' @return an array of random numbers for each event, person and time cycle
-generate_random <- function() {
-  events <- c("PROBS", "SYMPT", "FIT_UPTK", "Screen_UPTK","Diag_UPTK")
-  array(runif(n.i * length(events) * n.t), dim = c(n.i, length(events), n.t), dimnames = list(NULL, events, NULL))
-} 

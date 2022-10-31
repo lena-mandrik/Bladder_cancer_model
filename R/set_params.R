@@ -1,3 +1,57 @@
+########################################################
+## Functions to allocate the time to stage at diagnosis for each person in HSE
+#' @details
+#' This function uses the mean and the shape to calculate the scale and sample from the Weibull distribution 
+
+f.Weibull.sample <- function(w_mean, shape){
+  scale = w_mean/gamma(1+1/shape)
+  
+  time_to_state <- rweibull(1, shape, scale)
+  
+  time_to_state
+  
+}
+
+#' @details
+#' This function returns a time from onset to the Stage 2,3, and 4 for each person in the model
+#' @params
+#' Mean.t. - mean time from each stage till the next one. Based on a fixed input from a qualitative study
+#' shape.t. - a calibrated shape for each Weibull distribution for each parameter
+#' @return matrix of transition probabilities for each individual
+
+f.stage <- function(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.t.StII.StIII, 
+                    Mean.t.StIII.StIV, shape.t.StIII.StIV){
+  
+  T.onsetToStage2 <- f.Weibull.sample(Mean.t.StI.StII, shape.t.StI.StII)
+  T.Stage3 <- f.Weibull.sample(Mean.t.StII.StIII, shape.t.StII.StIII)
+  T.Stage4 <- f.Weibull.sample(Mean.t.StIII.StIV, shape.t.StIII.StIV)
+  
+  T.onsetToStage3 <- T.onsetToStage2+T.Stage3
+  T.onsetToStage4 <- T.onsetToStage3+T.Stage4
+  v.Stages <- c(T.onsetToStage2, T.onsetToStage3, T.onsetToStage4)
+  
+  v.Stages
+  
+}
+
+#create a matrix for all people in the dataset with the time they get each stage if they get invasive cancer
+m.BC.T.to.Stage <- matrix(nrow = n.i, ncol = 3)
+colnames(m.BC.T.to.Stage) <-c("T.onsetToStage2", "T.onsetToStage3", "T.onsetToStage4")
+rownames(m.BC.T.to.Stage) <- 1:n.i
+
+#' @details
+#' This code assigns the time till next stage for each person in HSE probabilistically
+#' @params 
+#' m.BC.T.to.Stage - matrix containing the time to the stage for each person in HSE
+
+f.stage.assign <- function(m.BC.T.to.Stage){
+  
+  for(i in 1:n.i){
+    m.BC.T.to.Stage[i,] <- f.stage(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.t.StII.StIII, Mean.t.StIII.StIV, shape.t.StIII.StIV)
+  }
+  m.BC.T.to.Stage <- round(m.BC.T.to.Stage)
+  m.BC.T.to.Stage
+}
 
 #' @details
 #' This function sets parameters 
@@ -111,11 +165,22 @@ pop
 
 }
 
+#' @details
+#' This function sets up an array of random numbers
+#' @params
+#' @return an array of random numbers for each event, person and time cycle
+generate_random <- function() {
+  events <- c("PROBS", "SYMPT", "Death_BC", "Screen_UPTK","Diag_UPTK")
+  array(runif(n.i * length(events) * n.t), dim = c(n.i, length(events), n.t), dimnames = list(NULL, events, NULL))
+} 
+
 
 #' @details
 #' This function calculates individual other cause mortality based on the risk factors 
 #' @params
-#' pop: popula
+#' pop: population
 #' 
  #Set up random number array for each individual
 m.Rand <- generate_random()
+
+

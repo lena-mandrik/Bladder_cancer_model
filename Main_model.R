@@ -55,16 +55,10 @@ p.set <- ifelse(run_mode =="PSA", i, 1)
 #Set up the model parameters according to current parameter set
 set_parameters(p.set)
 
+# Allocate the time to stage at diagnosis for each person in HSE
+f.stage.assign(m.BC.T.to.Stage) ##!! Needs to be replaced later to avoid loops (apply or map)
+
 # Set the model baseline population risk
 pop <- f.risk.calc(population)
-
-# Allocate the time to stage at diagnosis for each person in HSE
-##!! Needs to be replaced later to avoid loops (apply or map)
-
-for (i in 1:n.i){
-  m.BC.T.to.Stage[i,] <- f.stage(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.t.StII.StIII, 
-                                 Mean.t.StIII.StIV, shape.t.StIII.StIV)
-}
-m.BC.T.to.Stage <-round(m.BC.T.to.Stage)
 
 # Something else 
