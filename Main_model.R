@@ -56,7 +56,7 @@ p.set <- ifelse(run_mode =="PSA", i, 1)
 set_parameters(p.set)
 
 # Allocate the time to stage at diagnosis for each person in HSE
-f.stage.assign(m.BC.T.to.Stage) ##!! Needs to be replaced later to avoid loops (apply or map)
+m.BC.T.to.Stage <- f.stage.assign(m.BC.T.to.Stage) ##!! Needs to be replaced later to avoid loops (apply or map)
 
 # Set the model baseline population risk
 pop <- f.risk.calc(population)

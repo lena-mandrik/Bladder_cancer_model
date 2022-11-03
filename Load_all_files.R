@@ -92,5 +92,12 @@ out_names <- c("TOTAL_COSTS", "BC_COSTS", "SCREEN_COSTS", "SURV_COSTS", "HARM_CO
                "HG_St3_SCRN", "HG_St4_SCRN", "LG_SCRN", "HG_St1_MORT", "HG_St2_MORT", "HG_St3_MORT", "HG_St4_MORT", "SCREEN_INVITE", "SCREEN_RESPOND", "SCREEN_FOLLOWED")
 
 
+#create a matrix for all people in the dataset with the time they get each stage if they get invasive cancer
+m.BC.T.to.Stage <- matrix(nrow = n.i, ncol = 3)
+colnames(m.BC.T.to.Stage) <-c("T.onsetToStage2", "T.onsetToStage3", "T.onsetToStage4")
+rownames(m.BC.T.to.Stage) <- 1:n.i
 
+
+#Set up random number array for each individual
+m.Rand <- generate_random()
 

@@ -12,8 +12,14 @@ P.onset_sex	1.25	4	1	1.5
 P.sympt.diag_LGBC	0.05	5	0.05	0.1
 P.sympt.diag_A_HGBC	0.1	5	0.01	0.2
 P.sympt.diag_B_HGBC	1.2	5	1.01	1.7
-P.sympt.diag_Age80_HGBC	-0.005	5	-0.005	0.2
+P.sympt.diag_Age80_HGBC	0.95	4	0.5	1
 C.age.80.undiag.mort	-0.055	4	-0.1	-0.01
 Mean.t.StI.StII	3	6	3	3
 Mean.t.StII.StIII	2	6	2	2
 Mean.t.StIII.StIV	1	6	1	1
+RR.All.Death.no_smoke	0.8	6	0.8	0.8
+shape.t.StI.StII	1.001	4	1.001	1.2
+shape.t.StII.StIII	1.001	4	1.001	1.2
+shape.t.StIII.StIV	1.001	4	1.001	1.2
+P.LGtoHGBC	0.0048	6	0	0
+P.Recurrence.LR	0.285	5	0.285	0.016837044
