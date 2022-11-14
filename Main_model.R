@@ -17,9 +17,9 @@ set.seed(10)
 
 
 ###Set up the Global Parameters
-run_mode <- "Deterministic" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag only), "Deterministic" (m.Out only), "PSA" (m.Out only)
+run_mode <- "Testing" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag only), "Deterministic" (m.Out only), "PSA" (m.Out only)
 cohort <- 1 # 1 = all individuals start model at same age (cohort), 0 = individuals start in model at true (HSE) age
-cohort_age <- 50 #select starting age of cohort (hash out or set to anything if not using cohort)
+cohort_age <- 60 #select starting age of cohort (hash out or set to anything if not using cohort)
 n.loops <- 5 # The number of model loops/PSA loops to run 
 cl <- 1  # The cycle length (years) 
 n.t   <- if(cohort==1){100-cohort_age}else{70}  # The number of cycles to run 
@@ -58,7 +58,11 @@ set_parameters(p.set)
 # Allocate the time to stage at diagnosis for each person in HSE
 m.BC.T.to.Stage <- f.stage.assign(m.BC.T.to.Stage) ##!! Needs to be replaced later to avoid loops (apply or map)
 
-# Set the model baseline population risk
-pop <- f.risk.calc(population)
+# the model baseline population risk is 0 at the model start (age 30 years)
 
-# Something else 
+pop <- f.risk.calc(population) #calculates relative and absolute risks of cancer onset
+
+#Set up random number array for each individual
+m.Rand <- generate_random()
+
+results_NHD_modelling <- Simulate_NHD(n.i, n.t, pop)

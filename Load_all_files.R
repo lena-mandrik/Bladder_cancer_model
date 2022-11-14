@@ -64,9 +64,11 @@ Param.names <- colnames(Param_sets)
 # Param_sets[1:N_sets, 1:49] <- Corr_param_sets[1:N_sets, 1:49]
 
 #Specify health states
-states <- c("NoBC", "BC_LG", "BC_HG", "DeathOC")
+states <- c("NoBC", "BC_LG", "BC_HG", "Death")
 states_long <- c("NoBC", "BC_LG","St1_HG",  "DeathOC","St2_HG","St3_HG","St4_HG","DeathBC")
 v.n <- c(1:4)
+
+v.n_long <- c(1:8)
 n.s   <- length(states)  # the number of health states modelled as states
 n.s_long   <- length(states_long)  # the number of all health states 
 

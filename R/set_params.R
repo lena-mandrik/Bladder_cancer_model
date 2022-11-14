@@ -34,10 +34,6 @@ f.stage <- function(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.
   
 }
 
-#create a matrix for all people in the dataset with the time they get each stage if they get invasive cancer
-m.BC.T.to.Stage <- matrix(nrow = n.i, ncol = 3)
-colnames(m.BC.T.to.Stage) <-c("T.onsetToStage2", "T.onsetToStage3", "T.onsetToStage4")
-rownames(m.BC.T.to.Stage) <- 1:n.i
 
 #' @details
 #' This code assigns the time till next stage for each person in HSE probabilistically
@@ -139,31 +135,46 @@ f.risk.calc <- function(pop) {
   
 #Calculate mean population attributes.
 # Sex associated risk is the only calibrated parameter
-  
 mean.p_smoke <- sum(pop[, "current_smoke"] * pop[, "weighting"])/sum(pop[, "weighting"])
 mean.p_psmoke <- sum(pop[, "past_smoke"] * pop[, "weighting"])/sum(pop[, "weighting"])
 mean.p_occupation <- sum(pop[, "occupation"] * pop[, "weighting"])/sum(pop[, "weighting"])
 mean.p_sex <- sum(pop[, "sex"] * pop[, "weighting"])/sum(pop[, "weighting"])
 
 #Calculate individual BC risk by multiplying risks for each attribute
-pop[, "risk_score"] <- (RR.current_smoke^(pop[, "current_smoke"] - mean.p_smoke))*
+pop[, "risk"] <- (RR.current_smoke^(pop[, "current_smoke"] - mean.p_smoke))*
   (RR.past_smoke ^ (pop[, "past_smoke"] - mean.p_psmoke))*
   (RR.manufacture ^ (pop[, "occupation"] - mean.p_occupation))*(P.onset_sex^(pop[, "sex"] - mean.p_sex))
 
-#TP.BC_onset <- (P.onset*P.onset_age^(pop[, "age"] -30))*pop[, "risk_score"]
+# Onset of the bladder cancer at time t by age
+pop[, "p.BC.i"] <-(P.onset*P.onset_age^(pop[, "age"] -30))*pop[, "risk"]
 
 #check
 #no_smoke <- rep(0,nrow(pop))
 #no_smoke <- replace(no_smoke, pop[, "past_smoke"] !=1 & pop[, "current_smoke"] !=1, 1)
 #mean(pop[, "current_smoke"]) + mean(pop[, "past_smoke"]) +mean(no_smoke)
 
-for (variable in ls()) {
-  assign(variable, get(variable), envir = .GlobalEnv)
-}
+#for (variable in ls()) {
+ # assign(variable, get(variable), envir = .GlobalEnv)
+#}
 
 pop
 
 }
+
+#' @details
+#' This function defines whether a person in HSE remains a smoker based on an annual probability to quit smoking
+#' @params
+#' pop: population matrix containing individual level attributes
+#' @return Updated pop matrix with updated 
+#' 
+
+ f.smoke.change <- function(pop) {
+  # Update smoking status, considering the proportion of smokers who quite smoking during one year
+  quit_smoke <- rbinom(nrow(pop), 1, prob =1-P.quit.smoke)
+  pop[,"current_smoke"] <- replace(pop[,"current_smoke"],pop[,"current_smoke"]==1 & quit_smoke ==0, 0)
+  pop[,"past_smoke"] <- replace(pop[,"past_smoke"], pop[,"no_smoke"]==0 & pop[,"past_smoke"]==0 & quit_smoke ==0, 1)
+  pop
+  }
 
 #' @details
 #' This function sets up an array of random numbers
@@ -173,14 +184,3 @@ generate_random <- function() {
   events <- c("PROBS", "SYMPT", "Death_BC", "Screen_UPTK","Diag_UPTK")
   array(runif(n.i * length(events) * n.t), dim = c(n.i, length(events), n.t), dimnames = list(NULL, events, NULL))
 } 
-
-
-#' @details
-#' This function calculates individual other cause mortality based on the risk factors 
-#' @params
-#' pop: population
-#' 
- #Set up random number array for each individual
-m.Rand <- generate_random()
-
-
