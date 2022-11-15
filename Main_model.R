@@ -11,15 +11,18 @@ library("survminer")
 library("dplyr")
 library("vroom")
 library("purrr")
+library("foreach")
+library("doParallel")
+library("doRNG")
 
 ###Set random seed
 set.seed(10)
 
 
 ###Set up the Global Parameters
-run_mode <- "Testing" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag only), "Deterministic" (m.Out only), "PSA" (m.Out only)
+run_mode <- "Calibration" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag and TR), "Deterministic" (m.Out only), "PSA" (m.Out only)
 cohort <- 1 # 1 = all individuals start model at same age (cohort), 0 = individuals start in model at true (HSE) age
-cohort_age <- 60 #select starting age of cohort (hash out or set to anything if not using cohort)
+cohort_age <- 30 #select starting age of cohort (hash out or set to anything if not using cohort)
 n.loops <- 5 # The number of model loops/PSA loops to run 
 cl <- 1  # The cycle length (years) 
 n.t   <- if(cohort==1){100-cohort_age}else{70}  # The number of cycles to run 
@@ -27,28 +30,41 @@ d.c <- 0.035 # The discount rate for costs
 d.e <- 0.035 # The discount rate for effects
 N_sets <- if(run_mode =="PSA"){n.loops}else{1} #Number of parameter sets required (for PSA). Minimum value = 1 (mean parameter values); maximum value = 1651 (number of calibrated correlated param sets)
 
-
-#score_age <- 40  #(Default = 40). Age at which known family history assigned and CRC risk score is calculated. 
-#CRC_death <- 1 #(Default = 1). Multiplier to adjust annual probability of CRC death. Globally applied to all ages, stages, sexes and times since diagnosis.
-#CRC_inc <- 1 #(Default = 1). Multiplier to adjust individual CRC risk and thereby incidence. Globally applied to all individuals.
-
 ###Load up all the functions and all the data for use in the model
 source("Load_all_files.R")
 
-#Set up results collection for all simulations named below
-results_NoScreen <- results_screen <- list()
-
-#Set up PSA results collection
-if(run_mode == "PSA"){
-  PSA_results_NoScreen <- matrix(0, nrow = 8 * length(out_names), ncol = n.loops)
-  rownames(PSA_results_NoScreen) <- rep(out_names, 8)
-  PSA_results_screen <- PSA_results_NoScreen
-}
 
 ###Load up all the functions and all the data for use in the model
-## Here the loops will be
-i=1
+###Set up results collection
+results_no_screen <- list()
 
+# Random numbers:
+optsN <- list(123, normal.kind = "Ahrens")
+
+# Linux or Windows code to forking or parallel execution:
+if(f.get_os() == "windows") {
+  n_cores <- (detectCores()-1)
+  cluster = makeCluster(n_cores, type = "PSOCK", outfile = "")  # Windows - WM
+  registerDoParallel(cluster) # Windows- WM
+  #registerDoRNG(1234, once = FALSE) # Windows- WM
+} else {
+  #doMC::registerDoMC(10) # Linux - WM. Random number issues
+  cluster = makeCluster(10, type = "FORK", outfile = "")  # Linux - WM
+  registerDoParallel(cluster) # Linux- WM
+  #registerDoRNG(1234, once = FALSE) # Linux- WM
+  # Progress bar:
+  pb = txtProgressBar(min = 1, max = n.loops, style = 3) # Linux- WM
+}
+
+### run the model:
+results_no_screen = foreach::foreach(iterator = 1:n.loops, .options.RNG = optsN) %dorng% {
+  gc()
+  
+  #Progress bar:
+  if(f.get_os() != "windows") {
+    setTxtProgressBar(pb, iterator) 
+  }
+  
 #Select appropriate parameter set to use
 p.set <- ifelse(run_mode =="PSA", i, 1) 
 
@@ -65,4 +81,13 @@ pop <- f.risk.calc(population) #calculates relative and absolute risks of cancer
 #Set up random number array for each individual
 m.Rand <- generate_random()
 
-results_NHD_modelling <- Simulate_NHD(n.i, n.t, pop)
+Simulate_NHD(n.i, n.t, pop)
+
+}
+
+if(f.get_os() == "windows") {
+  stopCluster(cluster)
+} else {
+  close(pb)
+  stopCluster(cluster)
+}

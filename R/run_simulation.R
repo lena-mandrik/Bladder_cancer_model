@@ -113,6 +113,9 @@ Simulate_NHD <- function(n.i, n.t, pop) {
      
   }#this is a loop for the time point
   
+  
+  # Extract the matrices for technical validity
+  
   if(run_mode == "Testing") { # Create a matrix of transitions across states
     TS_8 <- paste(m.M_8s, cbind(m.M_8s[, -1], NA), sep = "->") # transitions from one state to the other     
     TS_8 <- matrix(TS_8, nrow = n.i)
@@ -120,12 +123,7 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     TS_4 <- matrix(TS_4, nrow = n.i)
     rownames(TS_8) <- rownames(TS_4) <-paste("Ind",   1:n.i, sep = " ")   # name the rows      
     colnames(TS_8) <- colnames(TS_4) <-paste("Cycle", 0:n.t, sep = " ")   # name the columns    
-  } else {
-    TS_8 <- TS_4 <- NULL   
-  } 
   
-
-  if (run_mode == "Testing") { # create a trace from the individual trajectories     
     TR_8 <- t(apply(m.M_8s, 2, function(x) table(factor(x, levels = v.n_long, ordered = TRUE))))     
     TR_8 <- TR_8 / n.i    # create a distribution trace
     TR_4 <- t(apply(m.M, 2, function(x) table(factor(x, levels = v.n, ordered = TRUE))))     
@@ -136,12 +134,44 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     colnames(TR_4) <-v.n    # name the columns    
     
   } else {   
-    TR_8 <- TR_4 <- NULL   
+    S_8 <- TS_4 <- TR_8 <- TR_4 <- NULL   
   } 
+  
+  # Extract the matrices by sex for calibration
+  
+  if (run_mode == "Calibration") { #  add additional two matrices to report TR matrix by gender
+    names_Diag <- c(colnames(m.Diag), "sex", "age")
+    m.Diag <- cbind(m.Diag, pop[ ,"sex"], pop[ ,"age_0"])
+    colnames(m.Diag) <-names_Diag
+    
+    a.Temp <- array(data = NA, dim = c(n.i, n.t+1, n.s_long))
+    for (i in 1:n.s_long) {
+      a.Temp[ , ,i] <- (m.M_8s == i)
+    }
+    
+    if(cohort ==1){
+      a.Temp <- a.Temp*pop[,"weighting"]
+    }
+    
+    a.Male <- a.Temp[pop[, "sex"] == 1, ,]
+    if(cohort ==1){
+      TR_m <- as.matrix(colSums(a.Male))/ sum(pop[, "weighting"]*pop[, "sex"])
+    } else {TR_m <- as.matrix(colSums(a.Male))/ sum(pop[, "sex"])}
+    rownames(TR_m) <- paste("Cycle", 0:n.t, sep = " ")  # name the rows
+    colnames(TR_m) <- v.n_long     # name the columns    
+    
+    a.Female <- a.Temp[pop[ ,"sex"] == 0, ,]
+    if(cohort ==1){
+      TR_f <- as.matrix(colSums(a.Female))/ sum(pop[, "weighting"]*(1-pop[, "sex"]))
+    } else {TR_f <- as.matrix(colSums(a.Female))/ sum((1-pop[, "sex"]))}
+    rownames(TR_f) <- paste("Cycle", 0:n.t, sep = " ")  # name the rows
+    colnames(TR_f) <- v.n_long     # name the columns 
+    
+  }
   
   results <- switch(run_mode, 
                     Testing = list(TR_8 = TR_8, TR_4 = TR_4,m.Diag = m.Diag),
-                    Calibration = list(TR_8 = TR_8, m.Diag = m.Diag)
+                    Calibration = list(TR_f = TR_f, TR_m=TR_m, m.Diag = m.Diag)
   )
   
   

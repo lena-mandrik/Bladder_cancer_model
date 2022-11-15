@@ -76,13 +76,12 @@ n.s_long   <- length(states_long)  # the number of all health states
 # State 1. no disease (ND)
 # State 2. low grade (LG)
 # state 3. high grade (HG) Stage 1 (HG_St1)
-# State 4. high grade (HG) Stage 2 (HG_St2)
-# State 5. high grade (HG) Stage 3 (HG_St3)
-# State 6. high grade (HG) Stage 4 (HG_St4)
-# State 7. Diagnosed
+# State 4. Death OC
+# State 5. high grade (HG) Stage 2 (HG_St2)
+# State 6. high grade (HG) Stage 3 (HG_St3)
+# State 7. high grade (HG) Stage 4 (HG_St4)
+# State 8. Death from bladder cancer
 
-# State 8. DeathBC (Death from bladder cancer)
-# State 9. DeathOC (Death from causes other than bladder cancer)
 
 #Set costs and QALYs discount weights
 v.dwc <- 1 / (1 + d.c) ^ (0:n.t)   # calculate the cost discount weight based on the discount rate d.c    
