@@ -5,11 +5,7 @@ Simulate_NHD <- function(n.i, n.t, pop) {
   # n.i:     number of individuals; Global parameters, Master script
   # n.t:     total number of cycles to run the model; Global parameters, Master script   
   # pop:     matrix of individual level population attributes
-  # FITscreen:  whether or not FIT screening is used in this model run
-  # model: model used to calculate individual CRC risk
-  # risk: absolute risk at which FIT screening starts if using risk model
-  # sex: use sex-specific risks to calculate age at first screen
-  
+
   # Makes use of:   
   # Probs:  function for the estimation of transition probabilities (script "Functions")
   # Costs:   function for the estimation of cost state values (script "Functions")
@@ -33,6 +29,8 @@ Simulate_NHD <- function(n.i, n.t, pop) {
   
   #Create another matrix for current diagnostic information
   m.Diag <- matrix(0, nrow = n.i, ncol = 14)
+  
+  # When BC said, it means HG
   colnames(m.Diag) <- c("BC_state", "BC_diag", "LG_BC_diag", "age_LG_BC_diag", "sympt_diag", "screen_diag", "new_diag",
                         "age_diag", "stage_diag", "yr_diag", "yr_onset", "age_onset", "new_onset", "age_BC_death")
   

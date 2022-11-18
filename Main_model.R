@@ -23,7 +23,7 @@ set.seed(10)
 run_mode <- "Calibration" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag and TR), "Deterministic" (m.Out only), "PSA" (m.Out only)
 cohort <- 1 # 1 = all individuals start model at same age (cohort), 0 = individuals start in model at true (HSE) age
 cohort_age <- 30 #select starting age of cohort (hash out or set to anything if not using cohort)
-n.loops <- 5 # The number of model loops/PSA loops to run 
+n.loops <- 100 # The number of model loops/PSA loops to run 
 cl <- 1  # The cycle length (years) 
 n.t   <- if(cohort==1){100-cohort_age}else{70}  # The number of cycles to run 
 d.c <- 0.035 # The discount rate for costs
@@ -43,7 +43,7 @@ optsN <- list(123, normal.kind = "Ahrens")
 
 # Linux or Windows code to forking or parallel execution:
 if(f.get_os() == "windows") {
-  n_cores <- (detectCores()-1)
+  n_cores <- (detectCores()-2)
   cluster = makeCluster(n_cores, type = "PSOCK", outfile = "")  # Windows - WM
   registerDoParallel(cluster) # Windows- WM
   #registerDoRNG(1234, once = FALSE) # Windows- WM
