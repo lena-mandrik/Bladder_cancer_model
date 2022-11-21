@@ -5,13 +5,6 @@
 ### The function uses the output matrix TR as an input and sums number of either population alive by age
 ## TR (the input of the function) - is a matrix with transition rates (proportion of people in each health state which sums to 1)
 
-# Calculate the size of the cohorts 
-Cohort_m <- sum(population[,"sex"]==1)
-Cohort_f <- sum(population[,"sex"]==0)
-
-# Extracting from the lists 
-list_results <- results_no_screen
-
 # Function that extracts the outcputs from the list 
 # The function return a list with incidence of HGBC, LGBC, and undiagnosed BC by age and proportion of LGBC progressed to HGBC
 
@@ -50,7 +43,7 @@ results <- list(rate_outcomes_m = rate_outcomes_m,
 results
 }
 
-list <- f.calibr.output(list_results)
+
 ################################################################
 # @ input: the output of run_simulation: m.Diag , sex 1 - males, 0 - females
 # @ output:  counts 
@@ -103,4 +96,36 @@ f.LG.to.HG <- function(m.Diag){
   LG_to_HR_cancers <- sum(m.diagnosed[ ,"LG_BC_diag"]& m.diagnosed[ ,"BC_diag"])/sum(m.diagnosed[ ,"LG_BC_diag"])
   
   LG_to_HR_cancers
+}
+
+
+# function to transform Targets in the short format (by age group) to the long format (by each age)
+
+f.targets.per.alive.long <- function(target.data, start_age, end_age, n_by) {
+  
+  output <- start_age:end_age
+  Age = seq(start_age, end_age, by =n_by)
+  
+  target.data = cbind(Age, target.data)
+  
+  for(n_outcome in 2:ncol(target.data)){
+    
+    start <-0 
+    
+    for (i in 1:(nrow(target.data)-1)){
+      
+      extrapolation <- (approx(x = target.data[i:(i+1), "Age"], y = target.data[i:(i+1), n_outcome], n=n_by))[[2]]
+      
+      start <- c(start, extrapolation)
+    }
+    
+    start <- c(start[-1],start[length(start)]) # there is an atrifact of extrapolation; need to figure out why
+    
+    output <- cbind(output,start)
+    
+  }
+  colnames(output) <- colnames(target.data)
+  
+  output
+  
 }

@@ -20,8 +20,6 @@ if(cohort ==1){
   population[, "age"] <- cohort_age
 }
 
-
-
 #Load probabilities of BC mortality data by age, sex, and stage (as separate files to avoid big matrices)
 #(probability assumed to be 0 after 10 years, and 0 if undiagnosed apart from stage IV)
 
