@@ -55,15 +55,18 @@ f.stage.assign <- function(m.BC.T.to.Stage){
 #' p.set: Parameter set selected
 #' @return all parameters into the global environment
 #' 
-set_parameters <- function(p.set) {
+f.set_parameters <- function(p.set) {
   
   for(i in 1:length(Param.names)){
     
     vector.Param <- Param_sets[p.set, i]
     names(vector.Param) <- c(Param.names[i])
+    
     assign(names(vector.Param), value =vector.Param, envir = .GlobalEnv)
     
   }
+ 
+  
 }
 
 
@@ -75,7 +78,7 @@ set_parameters <- function(p.set) {
 #' @return sets of parameters for PSA. The first row contains mean parameter values for deterministic analysis.
 
 
-generate_parameters <- function(Params, N_sets){
+f.generate_parameters <- function(Params, N_sets){
   
   #Set up matrix for parameter sets
   Param_sets <- matrix(0, ncol = N_sets, nrow = length(Params[,1]))

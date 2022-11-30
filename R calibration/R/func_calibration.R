@@ -215,10 +215,10 @@ f.CI.calc <- function(Targets){
   p_lower_f = p-bond
   p_higher_f = p+bond
   
- # colnames(p_higher_f) <- paste(colnames(p_higher_f),"_ub", sep="")
- # colnames(p_higher_m) <- paste(colnames(p_higher_m),"_ub", sep="")
- # colnames(p_lower_f) <- paste(colnames(p_lower_f),"_lb", sep="")
- # colnames(p_lower_m) <- paste(colnames(p_lower_m),"_lb", sep="")
+  colnames(p_higher_f) <- paste(colnames(p_higher_f),"_ub", sep="")
+  colnames(p_higher_m) <- paste(colnames(p_higher_m),"_ub", sep="")
+  colnames(p_lower_f) <- paste(colnames(p_lower_f),"_lb", sep="")
+  colnames(p_lower_m) <- paste(colnames(p_lower_m),"_lb", sep="")
   
   output <- cbind(p_lower_m, p_higher_m, p_lower_f, p_higher_f)
   
@@ -382,7 +382,11 @@ f.GOF.calc <- function(run, m.GOF, Targets, SE, Prediction){
 
   for(n in 1:ncol(Targets)){
     
-    m.GOF[run,n]<- sum(dnorm(x = Targets[,n], mean = Prediction[,n], sd = SE[,n], log = T))
+    distribution <- dnorm(x = Targets[,n], mean = Prediction[,n], sd = SE[,n], log = T)
+    distribution[which(!is.finite(distribution))] <-0 # replace with zero infinite and undefined numbers
+    m.GOF[run,n]<- sum(distribution)
+    #m.GOF[run,n]<- sum(dnorm(x = Targets[,n], mean = Prediction[,n], sd = SE[,n], log = T))
   }
   m.GOF
 }
+

@@ -172,6 +172,5 @@ Simulate_NHD <- function(n.i, n.t, pop) {
                     Calibration = list(TR_f = TR_f, TR_m=TR_m, m.Diag = m.Diag)
   )
   
-  
   return(results)  # return the results 
   }  
