@@ -52,7 +52,7 @@ rownames(BC.1.mort) <- rownames(BC.2.mort) <- rownames(BC.3.mort) <- rownames(BC
 
 
 #Generate parameter sets for PSA, adjusted for cycle length
-Param_sets <- generate_parameters(Params, N_sets)
+Param_sets <- f.generate_parameters(Params, N_sets)
 Param.names <- colnames(Param_sets)
 
 

@@ -66,14 +66,13 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     
     m.M_8s[, t+1] <- m.M[, t+1]
     m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t] ==8, 8) #Replace with BC death those who died with BC before this cycle
-    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage2"]==m.Diag[,"yr_onset"])| m.M_8s[, t]==5, 5) #Replace for stage 2
-    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage3"]==m.Diag[,"yr_onset"])| m.M_8s[, t]==6, 6) #Replace for stage 3
-    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage4"]==m.Diag[,"yr_onset"])| m.M_8s[, t]==7, 7) #Replace for stage 4
+    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage2"]==m.Diag[,"yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==5), 5) #Replace for stage 2
+    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage3"]==m.Diag[,"yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==6), 6) #Replace for stage 3
+    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage4"]==m.Diag[,"yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==7), 7) #Replace for stage 4
     
     # Mark in m.Diag all persons with BC (independently on diagnosis)
     m.Diag[ ,"BC_state"] <- replace(m.Diag[ ,"BC_state"], m.Diag[ ,"yr_onset"] >0, 1)
-    
-    
+     
     # Update the matrix with the health state numbers with either 0 or 1 depending if it is equal to the sampled state
     m.State[] <- 0
     for(n in 1:n.s_long) {
@@ -108,10 +107,10 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     
     pop[IND, ] <- f.risk.calc(pop[IND, ]) #update the risk of BC and p of onset of BC
     
-     
+    
   }#this is a loop for the time point
   
-  
+
   # Extract the matrices for technical validity
   
   if(run_mode == "Testing") { # Create a matrix of transitions across states

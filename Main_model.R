@@ -20,10 +20,10 @@ set.seed(10)
 
 
 ###Set up the Global Parameters
-run_mode <- "Calibration" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag and TR), "Deterministic" (m.Out only), "PSA" (m.Out only)
+run_mode <- "Testing" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag and TR), "Deterministic" (m.Out only), "PSA" (m.Out only)
 cohort <- 1 # 1 = all individuals start model at same age (cohort), 0 = individuals start in model at true (HSE) age
 cohort_age <- 30 #select starting age of cohort (hash out or set to anything if not using cohort)
-n.loops <- 100 # The number of model loops/PSA loops to run 
+n.loops <- 10 # The number of model loops/PSA loops to run 
 cl <- 1  # The cycle length (years) 
 n.t   <- if(cohort==1){100-cohort_age}else{70}  # The number of cycles to run 
 d.c <- 0.035 # The discount rate for costs
@@ -69,7 +69,7 @@ results_no_screen = foreach::foreach(iterator = 1:n.loops, .options.RNG = optsN)
 p.set <- ifelse(run_mode =="PSA", i, 1) 
 
 #Set up the model parameters according to current parameter set
-set_parameters(p.set)
+f.set_parameters(p.set)
 
 # Allocate the time to stage at diagnosis for each person in HSE
 m.BC.T.to.Stage <- f.stage.assign(m.BC.T.to.Stage) ##!! Needs to be replaced later to avoid loops (apply or map)
@@ -91,3 +91,4 @@ if(f.get_os() == "windows") {
   close(pb)
   stopCluster(cluster)
 }
+
