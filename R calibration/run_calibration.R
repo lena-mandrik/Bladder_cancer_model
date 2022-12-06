@@ -1,8 +1,7 @@
 # This is the code to run calibration either with a random approach or a Bayesian way
 # Date: 23/11/22
-### Remove everything in workspace 
 
-rm(list = ls(all = TRUE))
+rm(list = ls(all = TRUE)) # Remove everything in the workspace 
 
 #Load required libraries
 library("survival")
@@ -22,7 +21,6 @@ set.seed(10)
 ## Load all data needed for the model that is not in the loop
 ##################################################################################
 
-
 ###Set up the Global Parameters
 run_mode <- "Calibration" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag and TR), "Deterministic" (m.Out only), "PSA" (m.Out only)
 cohort <- 1 # 1 = all individuals start model at same age (cohort), 0 = individuals start in model at true (HSE) age
@@ -39,27 +37,6 @@ source("Load_all_files.R")
 
 
 ###Load up all the functions and all the data for use in the model
-###Set up results collection
-results_no_screen <- list()
-
-# Random numbers:
-optsN <- list(123, normal.kind = "Ahrens")
-
-# Linux or Windows code to forking or parallel execution:
-if(f.get_os() == "windows") {
-  n_cores <- (detectCores()-2)
-  cluster = makeCluster(n_cores, type = "PSOCK", outfile = "")  # Windows - WM
-  registerDoParallel(cluster) # Windows- WM
-  #registerDoRNG(1234, once = FALSE) # Windows- WM
-} else {
-  #doMC::registerDoMC(10) # Linux - WM. Random number issues
-  cluster = makeCluster(10, type = "FORK", outfile = "")  # Linux - WM
-  registerDoParallel(cluster) # Linux- WM
-  #registerDoRNG(1234, once = FALSE) # Linux- WM
-  # Progress bar:
-  pb = txtProgressBar(min = 1, max = n.loops, style = 3) # Linux- WM
-}
-
 ###############################################################################
 # Load the calibration inputs
 
@@ -87,26 +64,25 @@ CI_targets <- f.CI.calc(Targets)
 SE_males <- (CI_targets[ ,7:12] - CI_targets[ ,1:6])/3.92
 SE_females <- (CI_targets[ ,19:24] - CI_targets[ ,13:18])/3.92
 SE <- cbind(SE_males, SE_females)
-colnames(SE) <- paste(colnames(SE),"_SE", sep="")
-
+colnames(SE) <- paste(colnames(Targets)[-1],"_SE", sep="")
 
 # Visualize the target
 f.plot.target(Targets, CI_targets)
 
 # Define parameters to calibrate
-Calibr_parameters <- Params[c("P.onset", "P.onset_age", "P.onset_sex", "P.sympt.diag_LGBC", "P.sympt.diag_A_HGBC",
+Calibr_parameters <- Params[c("P.onset", "P.onset_low.risk", "P.onset_age", "P.onset_sex", "P.sympt.diag_LGBC", "P.sympt.diag_A_HGBC",
                               "P.sympt.diag_B_HGBC", "P.sympt.diag_Age80_HGBC", "C.age.80.undiag.mort",
                               "RR.All.Death.no_smoke", "shape.t.StI.StII", "shape.t.StII.StIII", "shape.t.StIII.StIV") ,]
 v.param_names <- rownames(Calibr_parameters) # number of parameters to calibrate 
 n_params <- length(v.param_names)
 
-n_samples <-8 # number of calibration runs
+n_samples <-3 # number of calibration runs
 
 time_0 <- Sys.time() # Add in the end the run time calculation
 
 # Search dimensions. Use for random search algorithm only
-lower_boud <- c(0.000001, 1.000001, 1.000001, 0.005, 0.01, 1.01, 0.5, -0.1, 0.6, rep(1.001,3)) #for symtomatic presentation requires other limits - A <15%, B =5-40%, C=10-60%, D-30-100%
-upper_boud <- c(0.001, 1.1, 1.5, 0.1, 0.2, 1.7, 1, -0.01, 0.99, rep(1.2,3))
+lower_boud <- c(0.000001, 0.1, 1.001, 1.001, 0.005, 0.001, 1.01, 0.85, -0.3, 0.2, rep(1.005,3)) #for symtomatic presentation requires other limits - A <15%, B =5-40%, C=10-60%, D-30-100%
+upper_boud <- c(0.001, 0.6, 1.2, 1.9, 0.1, 0.2, 1.9, 1, -0.01, 0.99, rep(1.5,3))
 
 # Sample using Latin Hypercube
 sample_LH <- randomLHS(n_samples, n_params)
@@ -126,8 +102,6 @@ write.csv(m.sample.params, file="R calibration\\ParametersInput.csv")
 m.GOF <-  matrix(nrow=n_samples, ncol = ncol(Targets)-1)
 colnames(m.GOF) <- paste0(c(v.target_names), "_fit")
 
-# Extracting from the lists 
-#list <- f.calibr.output(results_no_screen)
 
 # Run the calibration loops
 
@@ -146,7 +120,7 @@ for(run in 1:n_samples){
   m.GOF <- f.GOF.calc(run, m.GOF, Targets, SE, Predict)
   
 
-  if(run%%10==0){
+  if(run%%2==0){
     write.csv(m.GOF, file="R calibration\\Outputs\\m.GOF.csv")}
 } 
 
