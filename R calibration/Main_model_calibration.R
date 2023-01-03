@@ -39,7 +39,7 @@ f.set_parameters(p.set)
 if(run_mode == "Calibration"){ #replace the calibrated parameters in the calibration mode only
   P.onset_age <- Calibr_parameters["P.onset_age", 1]
   P.onset_low.risk <- Calibr_parameters["P.onset_low.risk", 1]
-  P.onset_sex <- Calibr_parameters["P.onset_sex", 1]
+  P.onset_sex <- Calibr_parameters["RR.onset_sex", 1]
   P.sympt.diag_LGBC <- Calibr_parameters["P.sympt.diag_LGBC", 1]
   P.sympt.diag_A_HGBC <- Calibr_parameters["P.sympt.diag_A_HGBC", 1]
   P.sympt.diag_B_HGBC <- Calibr_parameters["P.sympt.diag_B_HGBC", 1]
@@ -50,13 +50,12 @@ if(run_mode == "Calibration"){ #replace the calibrated parameters in the calibra
   shape.t.StII.StIII <- Calibr_parameters["shape.t.StII.StIII", 1]
   shape.t.StIII.StIV <- Calibr_parameters["shape.t.StIII.StIV", 1]
 }
-
 # Allocate the time to stage at diagnosis for each person in HSE
-m.BC.T.to.Stage <- f.stage.assign(m.BC.T.to.Stage) ##!! Needs to be replaced later to avoid loops (apply or map)
+m.BC.T.to.Stage <- f.stage(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.t.StII.StIII, 
+                           Mean.t.StIII.StIV, shape.t.StIII.StIV, n.i)
 
-# the model baseline population risk is 0 at the model start (age 30 years)
-
-pop <- f.risk.calc(population) #calculates relative and absolute risks of cancer onset
+#calculates relative and absolute risks of cancer onset
+pop <- f.risk.calc(population) 
 
 #Set up random number array for each individual
 m.Rand <- generate_random()

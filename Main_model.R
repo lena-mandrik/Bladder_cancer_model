@@ -1,7 +1,7 @@
 # Lena Mandrik 12.07.2022
 # This is the main script
-###Run this script to run whole model
-###Remove everything in workspace 
+### Run this script to run whole model
+### Remove everything in workspace 
 
 rm(list = ls(all = TRUE))
 
@@ -23,7 +23,7 @@ set.seed(10)
 run_mode <- "Testing" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag and TR), "Deterministic" (m.Out only), "PSA" (m.Out only)
 cohort <- 1 # 1 = all individuals start model at same age (cohort), 0 = individuals start in model at true (HSE) age
 cohort_age <- 30 #select starting age of cohort (hash out or set to anything if not using cohort)
-n.loops <- 10 # The number of model loops/PSA loops to run 
+n.loops <- 1 # The number of model loops/PSA loops to run 
 cl <- 1  # The cycle length (years) 
 n.t   <- if(cohort==1){100-cohort_age}else{70}  # The number of cycles to run 
 d.c <- 0.035 # The discount rate for costs
@@ -72,16 +72,17 @@ p.set <- ifelse(run_mode =="PSA", i, 1)
 f.set_parameters(p.set)
 
 # Allocate the time to stage at diagnosis for each person in HSE
-m.BC.T.to.Stage <- f.stage.assign(m.BC.T.to.Stage) ##!! Needs to be replaced later to avoid loops (apply or map)
+m.BC.T.to.Stage <- f.stage(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.t.StII.StIII, 
+                           Mean.t.StIII.StIV, shape.t.StIII.StIV, n.i)
 
-# the model baseline population risk is 0 at the model start (age 30 years)
-
-pop <- f.risk.calc(population) #calculates relative and absolute risks of cancer onset
+#calculates relative and absolute risks of cancer onset
+pop <- f.risk.calc(population) 
 
 #Set up random number array for each individual
 m.Rand <- generate_random()
 
 Simulate_NHD(n.i, n.t, pop)
+
 
 }
 

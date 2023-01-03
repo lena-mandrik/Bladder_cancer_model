@@ -5,7 +5,6 @@ Simulate_NHD <- function(n.i, n.t, pop) {
   # n.i:     number of individuals; Global parameters, Master script
   # n.t:     total number of cycles to run the model; Global parameters, Master script   
   # pop:     matrix of individual level population attributes
-
   # Makes use of:   
   # Probs:  function for the estimation of transition probabilities (script "Functions")
   # Costs:   function for the estimation of cost state values (script "Functions")
@@ -28,10 +27,10 @@ Simulate_NHD <- function(n.i, n.t, pop) {
   }
   
   #Create another matrix for current diagnostic information
-  m.Diag <- matrix(0, nrow = n.i, ncol = 14)
+  m.Diag <- matrix(0, nrow = n.i, ncol = 15)
   
   # When BC said, it means HG
-  colnames(m.Diag) <- c("BC_state", "BC_diag", "LG_BC_diag", "age_LG_BC_diag", "sympt_diag", "screen_diag", "new_diag",
+  colnames(m.Diag) <- c("BC_state", "BC_diag", "LG_BC_diag", "LG_BC_n", "age_LG_BC_diag", "sympt_diag", "screen_diag", "new_diag",
                         "age_diag", "stage_diag", "yr_diag", "yr_onset", "age_onset", "new_onset", "age_BC_death")
   
   # Create an array to gather screening and surveillance information for each cycle
@@ -43,13 +42,12 @@ Simulate_NHD <- function(n.i, n.t, pop) {
   rownames(m.Out) <- out_names
   colnames(m.Out) <- c(0:n.t)
   
-  
   # loop to run the model over time
   for(t in 1:n.t) {
     
     #Natural History
     TP <- calc.indiv.TPs(pop) #calculate new individualised transition probabilities for onset of BC and OC mortality
-  
+
     m.p <- Probs(m.M[, t], TP) #calculate transition probabilities for 4 states at cycle t (excludes TP for those with invasive BC)
     
     m.M[, t+1] <- samplev(m.p, m.Rand, t) #Sample the next health state and store it in the Matrix m.M numerically
@@ -58,21 +56,32 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     # Record the characteristics of onset for HG cancer
     m.Diag[, "new_onset"] <-0
     m.Diag[, "yr_onset"][m.Diag[, "yr_onset"] >=1] <- m.Diag[, "yr_onset"][m.Diag[, "yr_onset"] >=1] +1 #Update the year of onset if the cancer developed the previous years
-    m.Diag[, "new_onset"] <- replace( m.Diag[,"new_onset"], m.M[, t+1] ==3 & m.M[, t] != 3, 1)
+    m.Diag[, "new_onset"] <- replace(m.Diag[,"new_onset"], m.M[, t+1] ==3 & m.M[, t] != 3, 1)
     m.Diag[, "yr_onset"] <- m.Diag[, "yr_onset"] + m.Diag[, "new_onset"]
     
     #Mark those individuals who just had BC onset
-    m.Diag[, "age_onset"] <- m.Diag[, "age_onset"] + (pop[, "age"] * m.Diag[, "new_onset"])
-    
-    m.M_8s[, t+1] <- m.M[, t+1]
-    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t] ==8, 8) #Replace with BC death those who died with BC before this cycle
-    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage2"]==m.Diag[,"yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==5), 5) #Replace for stage 2
-    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage3"]==m.Diag[,"yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==6), 6) #Replace for stage 3
-    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage4"]==m.Diag[,"yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==7), 7) #Replace for stage 4
+    m.Diag[, "age_onset"] <- m.Diag[, "age_onset"] + (pop[, "age"] * m.Diag[, "new_onset"])  
     
     # Mark in m.Diag all persons with BC (independently on diagnosis)
     m.Diag[ ,"BC_state"] <- replace(m.Diag[ ,"BC_state"], m.Diag[ ,"yr_onset"] >0, 1)
-     
+    
+    #Record whether the person had a recurrent LG
+   # TP.BCLG_recurrence <- rep(0, n.i)
+   # TP.BCLG_recurrence <- replace(TP.BCLG_recurrence, m.Diag[ ,"LG_BC_diag"]==1, P.Recurrence.LR)
+   # m.Diag[, "LG_BC_n"] <- rbinom(length(TP.BCLG_recurrence), 1, prob=TP.BCLG_recurrence)
+    
+    # Update m.M_8s matrix with the states for those who have HG cancer
+    m.M_8s[, t+1] <- m.M[, t+1]
+    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t] ==8, 8) #Replace with BC death those who died with BC before this cycle
+    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage2"]==m.Diag[,"yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==5)) & m.Diag[, "yr_diag"] ==0, 5) #Replace for stage 2
+    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage3"]==m.Diag[,"yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==6)) & m.Diag[, "yr_diag"] ==0, 6) #Replace for stage 3
+    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage4"]==m.Diag[,"yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==7)) & m.Diag[, "yr_diag"] ==0, 7) #Replace for stage 4
+    
+    # replace with the stage for those who were diagnosed assuming that they don't progress
+    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "stage_diag"]==2 & m.M[, t+1] != 4, 5) #replace the stage at diagnosis for those who were diagnosed
+    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "stage_diag"]==3 & m.M[, t+1] != 4, 6) #replace the stage at diagnosis for those who were diagnosed
+    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "stage_diag"]==4 & m.M[, t+1] != 4, 7) #replace the stage at diagnosis for those who were diagnosed
+    
     # Update the matrix with the health state numbers with either 0 or 1 depending if it is equal to the sampled state
     m.State[] <- 0
     for(n in 1:n.s_long) {
@@ -82,9 +91,8 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     #Symptomatic detection
     m.Diag <- f.symptom(m.Diag, m.State, m.Rand, pop, t, m.M) 
   
-    #BC death
+    # define BC deaths
     TP_BC.mort <- calc.BCmort.TP(pop, m.Diag)
-    
     new_BC1_death <- 1*((m.Rand[ ,"Death_BC", t] < TP_BC.mort[,"TP.BC.1.mort"]) & m.State[ ,"St1_HG"]>0)
     new_BC2_death <- 1*((m.Rand[ ,"Death_BC", t] < TP_BC.mort[,"TP.BC.2.mort"]) & m.State[ ,"St2_HG"]>0)
     new_BC3_death <- 1*((m.Rand[ ,"Death_BC", t] < TP_BC.mort[,"TP.BC.3.mort"]) & m.State[ ,"St3_HG"]>0)
@@ -92,6 +100,7 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     
     BC_death_all <- rowSums(cbind(new_BC1_death, new_BC2_death, new_BC3_death, new_BC4_death))
     
+    # update with the age of BC death
     m.Diag[, "age_BC_death"] <- m.Diag[, "age_BC_death"] + (pop[, "age"] * BC_death_all) # Record the age of death for those with cancer
     
     # Update the mortality for BC (replace with the state 8 in the m.M_8s matrix and state 4 in m.M matrix those who died with BC)
@@ -100,19 +109,15 @@ Simulate_NHD <- function(n.i, n.t, pop) {
 
     # Update the age for only those individuals who are alive
     IND <- m.M[, t+1] != 4
-    
     pop[IND, "age"] <- pop[IND,"age"] +1 # update the age
-    
-    pop[IND, ] <- f.smoke.change(pop[IND, ])  # update smoking status
-    
+    rand.quit <- m.Rand[ ,"Smoke_quit", t]
+    pop[IND, ] <- f.smoke.change(pop[IND, ], rand.quit[IND])  # update smoking status
     pop[IND, ] <- f.risk.calc(pop[IND, ]) #update the risk of BC and p of onset of BC
-    
     
   }#this is a loop for the time point
   
 
   # Extract the matrices for technical validity
-  
   if(run_mode == "Testing") { # Create a matrix of transitions across states
     TS_8 <- paste(m.M_8s, cbind(m.M_8s[, -1], NA), sep = "->") # transitions from one state to the other     
     TS_8 <- matrix(TS_8, nrow = n.i)
@@ -131,7 +136,7 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     colnames(TR_4) <-v.n    # name the columns    
     
   } else {   
-    S_8 <- TS_4 <- TR_8 <- TR_4 <- NULL   
+    TS_8 <- TS_4 <- TR_8 <- TR_4 <- NULL   
   } 
   
   # Extract the matrices by sex for calibration
@@ -167,7 +172,7 @@ Simulate_NHD <- function(n.i, n.t, pop) {
   }
   
   results <- switch(run_mode, 
-                    Testing = list(TR_8 = TR_8, TR_4 = TR_4,m.Diag = m.Diag),
+                    Testing = list(TR_8 = TR_8, TR_4 = TR_4,m.Diag = m.Diag, m.State=m.State),
                     Calibration = list(TR_f = TR_f, TR_m=TR_m, m.Diag = m.Diag)
   )
   

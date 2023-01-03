@@ -9,6 +9,8 @@ Or maybe it doesn't make a difference since it is the stage at diagnosis is reco
 
 2. Is it logical that in the outcomes, the rate of people in stage 1 > in stage 2 and in stage 3 < stage 4?
 
+3. I assume all statistics is a primary cancer. Is it so?
+
 
 This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
 

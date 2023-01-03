@@ -17,7 +17,6 @@ m.mortality_by.y <- m.survival
 # Convert to the dataframe for the future operations
 df.mortality <- as.data.frame(m.mortality)
 
-
 # Function f.survival.calc use empty data frames as inputs and df.mortality reporting survival data for 1,5,10 years by age and sex
 # Includes the type of the outcome to gather (stage and mean or CI, eg. S1 - stage 1) and sex (sex_0), where 0 - females and 1 - males
 # It returns the matrix with the probability to die from BC for a specific stage and sex by year and age (up to the year 10)
@@ -34,16 +33,21 @@ f.survival.calc <- function(df.mortality, m.survival, m.mortality_by.y, outcome,
     
     df <- subset(df.mortality, sex==sex_0 & age < (age_0 + 10) & age >= age_0) #subset the dataframe based on sex and age
     
-    survival_5 <- seq(df[1,outcome], df[2,outcome], length.out=5)
-    survival_10 <- seq(df[2,outcome], df[3,outcome], length.out=6)
+    #survival_5 <- seq(df[1,outcome], df[2,outcome], length.out=5)
+    #survival_10 <- seq(df[2,outcome], df[3,outcome], length.out=6)
     
-    v.survival5.10 <- c(survival_5, survival_10[2:6])
-   
-    # l.model <- lm(df[ ,outcome] ~ df[ ,2]) # Fit the linear model, year is the defining variable df[ ,2]
-    # coeff.model = l.model$coefficients # extract the coefficients
-    # b = coeff.model[[1]]
-    # a = coeff.model[[2]]
+    #v.survival5.10 <- c(survival_5, survival_10[2:6])
     
+    #Exponential extrapolation
+    y = df[ ,outcome]
+    x = df[ ,2]
+    l.model <- lm(formula = log(y) ~ x)
+    Intercept <- l.model[[1]][1]
+    co.x <- l.model[[1]][2]
+    v.x = 1:10
+    v.survival5.10 <- exp(Intercept)*(exp(co.x)^v.x)
+    
+
     
     for(age_i in age_0:(age_0+9)){ #repeat the model for each age in the group
       
@@ -60,12 +64,17 @@ f.survival.calc <- function(df.mortality, m.survival, m.mortality_by.y, outcome,
  }
   
   # Calculate the probability to die during the first year based on the survival function, assuming the survival is 100% at year 0
-  m.mortality_by.y[30:84, 1] <- (100 - m.survival[30:84, 1])/100
+  #m.mortality_by.y[30:84, 1] <- (100 - m.survival[30:84, 1])/100
+  
+  m.mortality_by.y[25:84, 1] <- 1 -(m.survival[25:84, 1]/100)
   
   for(i in 2:10){
-    m.mortality_by.y[30:84, i] <- (m.survival[30:84, (i-1)] - m.survival[30:84, i])/m.survival[30:84, (i-1)]
+    #m.mortality_by.y[30:84, i] <- (m.survival[30:84, (i-1)] - m.survival[30:84, i])/m.survival[30:84, (i-1)]
+    m.mortality_by.y[25:84, i] <- 1 - (m.survival[25:84, i])/m.survival[25:84, (i-1)]
+    
   }
   
+ 
   # The survival data are up to the age 75. Assume that those above age 75 has the same probability to die as those aged 75 yo.
   m.mortality_by.y <- m.mortality_by.y[30:84,] 
   m.mortality_by.y <- as.data.frame(m.mortality_by.y)

@@ -8,7 +8,7 @@ RR.All.Death.past_smoke	1.2	3	0.182321557	0.025531964
 RR.All.Death.current_smoke	2.76	3	1.01523068	0.009244009
 P.quit.smoke	0.0167	5	0.0167	0.000405237
 P.onset_age	1.0500005	4	1.000001	1.1
-P.onset_sex	1.25	4	1	1.5
+RR.onset_sex	1.25	4	1	1.5
 P.sympt.diag_LGBC	0.05	5	0.05	0.1
 P.sympt.diag_A_HGBC	0.1	5	0.01	0.2
 P.sympt.diag_B_HGBC	1.2	5	1.01	1.7

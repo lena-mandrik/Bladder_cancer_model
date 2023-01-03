@@ -25,7 +25,7 @@ set.seed(10)
 run_mode <- "Calibration" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag and TR), "Deterministic" (m.Out only), "PSA" (m.Out only)
 cohort <- 1 # 1 = all individuals start model at same age (cohort), 0 = individuals start in model at true (HSE) age
 cohort_age <- 30 #select starting age of cohort (hash out or set to anything if not using cohort)
-n.loops <- 3 # The number of model loops/PSA loops to run 
+n.loops <- 100 # The number of model loops/PSA loops to run 
 cl <- 1  # The cycle length (years) 
 n.t   <- if(cohort==1){100-cohort_age}else{70}  # The number of cycles to run 
 d.c <- 0.035 # The discount rate for costs
@@ -70,7 +70,7 @@ colnames(SE) <- paste(colnames(Targets)[-1],"_SE", sep="")
 f.plot.target(Targets, CI_targets)
 
 # Define parameters to calibrate
-Calibr_parameters <- Params[c("P.onset", "P.onset_low.risk", "P.onset_age", "P.onset_sex", "P.sympt.diag_LGBC", "P.sympt.diag_A_HGBC",
+Calibr_parameters <- Params[c("P.onset", "P.onset_low.risk", "P.onset_age", "RR.onset_sex", "P.sympt.diag_LGBC", "P.sympt.diag_A_HGBC",
                               "P.sympt.diag_B_HGBC", "P.sympt.diag_Age80_HGBC", "C.age.80.undiag.mort",
                               "RR.All.Death.no_smoke", "shape.t.StI.StII", "shape.t.StII.StIII", "shape.t.StIII.StIV") ,]
 v.param_names <- rownames(Calibr_parameters) # number of parameters to calibrate 
@@ -102,6 +102,9 @@ write.csv(m.sample.params, file="R calibration\\ParametersInput.csv")
 m.GOF <-  matrix(nrow=n_samples, ncol = ncol(Targets)-1)
 colnames(m.GOF) <- paste0(c(v.target_names), "_fit")
 
+# Check fitted parameters from the previous calibration
+fitted_params <- (read.table("R calibration/Outputs/parameters_fit.txt", header = F, row.names=1)) 
+Calibr_parameters[ ,1] <- fitted_params[,1]
 
 # Run the calibration loops
 
