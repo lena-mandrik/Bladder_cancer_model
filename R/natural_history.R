@@ -195,3 +195,22 @@ f.BC.stage.death <- function(pop, m.Diag){
   
   BC_death_all
 }
+
+#' @details
+#' This function records whether a person had a recurrent LG (if they have LGBC) and the number of recurrences 
+#' @params
+#' P.Recurrence.LR: annual probability of recurrence 
+#' m.Diag: matrix with the characterisics of the diagnosed state
+#' @return updated m.Diag matrix
+#' 
+#
+f.recurrence.LGBC <- function(m.Diag, n.i, t, P.Recurrence.LR){
+  
+  TP.BCLG_recurrence <- rep(0, n.i)
+  TP.BCLG_recurrence <- replace(TP.BCLG_recurrence, m.Diag[ ,"LG_BC_diag"]==1, P.Recurrence.LR)
+  m.Diag[, "LG_BC_n"] <- m.Diag[, "LG_BC_n"] + 1*(m.Rand[ ,"BCLG_recurrence", t] < TP.BCLG_recurrence)
+  
+  m.Diag
+}
+
+ 
