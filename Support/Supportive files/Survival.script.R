@@ -33,19 +33,19 @@ f.survival.calc <- function(df.mortality, m.survival, m.mortality_by.y, outcome,
     
     df <- subset(df.mortality, sex==sex_0 & age < (age_0 + 10) & age >= age_0) #subset the dataframe based on sex and age
     
-    #survival_5 <- seq(df[1,outcome], df[2,outcome], length.out=5)
-    #survival_10 <- seq(df[2,outcome], df[3,outcome], length.out=6)
+    survival_5 <- seq(df[2,outcome], df[3,outcome], length.out=5)
+    survival_10 <- seq(df[3,outcome], df[4,outcome], length.out=6)
     
-    #v.survival5.10 <- c(survival_5, survival_10[2:6])
+    v.survival5.10 <- c(survival_5, survival_10[2:6])
     
     #Exponential extrapolation
-    y = df[ ,outcome]
-    x = df[ ,2]
-    l.model <- lm(formula = log(y) ~ x)
-    Intercept <- l.model[[1]][1]
-    co.x <- l.model[[1]][2]
-    v.x = 1:10
-    v.survival5.10 <- exp(Intercept)*(exp(co.x)^v.x)
+   # y = df[ ,outcome]
+   # x = df[ ,2]
+   # l.model <- lm(formula = log(y) ~ x)
+   # Intercept <- l.model[[1]][1]
+   # co.x <- l.model[[1]][2]
+   # v.x = 1:10
+  #  v.survival5.10 <- exp(Intercept)*(exp(co.x)^v.x)
     
 
     
@@ -63,14 +63,20 @@ f.survival.calc <- function(df.mortality, m.survival, m.mortality_by.y, outcome,
     }
  }
   
+  
+  m.survival
+  
+}
   # Calculate the probability to die during the first year based on the survival function, assuming the survival is 100% at year 0
   #m.mortality_by.y[30:84, 1] <- (100 - m.survival[30:84, 1])/100
   
-  m.mortality_by.y[25:84, 1] <- 1 -(m.survival[25:84, 1]/100)
-  
+    m.mortality_by.y[25:84, 1] <- 1 -(m.survival[25:84, 1]/100)
+    
+
   for(i in 2:10){
-    #m.mortality_by.y[30:84, i] <- (m.survival[30:84, (i-1)] - m.survival[30:84, i])/m.survival[30:84, (i-1)]
-    m.mortality_by.y[25:84, i] <- 1 - (m.survival[25:84, i])/m.survival[25:84, (i-1)]
+    
+      #m.mortality_by.y[30:84, i] <- (m.survival[30:84, (i-1)] - m.survival[30:84, i])/m.survival[30:84, (i-1)]
+      m.mortality_by.y[25:84, i] <- 1 - (m.survival[25:84, i])/m.survival[25:84, (i-1)]
     
   }
   
@@ -110,7 +116,7 @@ S4 <- rbind(S4_f, S4_m)
 rownames(S1) <- rownames(S2) <-rownames(S3) <-rownames(S4) <-c(paste("1",c(30:100), sep = ""), paste("0",c(30:100), sep = ""))
 
 
-write.table(S1,"Data/survival/S1.txt", sep = "\t")
-write.table(S2,"Data/survival/S2.txt", sep = "\t")
-write.table(S3,"Data/survival/S3.txt", sep = "\t")
-write.table(S4,"Data/survival/S4.txt", sep = "\t")
+write.table(S1,"Data/survival/S1try.txt", sep = "\t")
+write.table(S2,"Data/survival/S2try.txt", sep = "\t")
+write.table(S3,"Data/survival/S3try.txt", sep = "\t")
+write.table(S4,"Data/survival/S4try.txt", sep = "\t")
