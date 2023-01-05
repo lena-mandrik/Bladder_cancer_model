@@ -12,7 +12,6 @@ m.mortality <- as.matrix(read.table("Support/Support Data/survival/BC_survival.t
 m.survival <- matrix(ncol= 10, nrow=100)
 row.names(m.survival) <- 1:100
 colnames(m.survival) <- 1:10
-m.mortality_by.y <- m.survival
 
 # Convert to the dataframe for the future operations
 df.mortality <- as.data.frame(m.mortality)
@@ -21,6 +20,79 @@ df.mortality <- as.data.frame(m.mortality)
 # Includes the type of the outcome to gather (stage and mean or CI, eg. S1 - stage 1) and sex (sex_0), where 0 - females and 1 - males
 # It returns the matrix with the probability to die from BC for a specific stage and sex by year and age (up to the year 10)
 # It is assumed that after Y10 the probability to die from BC is zero
+
+
+f.mort.calc <- function(df.mortality, m.survival, m.mortality_by.y, outcome, sex_0){
+  
+  
+  for(age_0 in seq(from = 25, to =75, by=10)){ # Age categories (the survival is assumed the same within the age categories)
+    
+    
+    # Interpolate between 1 and 5 years
+    
+    df <- subset(df.mortality, sex==sex_0 & age < (age_0 + 10) & age >= age_0) #subset the dataframe based on sex and age
+    
+    # df(t) is the probability that an individual survives from the time origin (e.g. diagnosis of cancer) to a specified future time t
+    
+    mortality_1 <- 1- df[2,outcome]/df[1,outcome] #probability to die in year 1
+    mortality_1_5 <- 1- df[3,outcome]/df[2,outcome] #probability to die between years 2 to 5
+    mortality_5_10 <- 1- df[4,outcome]/df[3,outcome] #probability to die between years 5 to 10
+    
+    R.mort_1_5 <- -log(1-mortality_1_5)/4 #convert to rates to get annual
+    p.mortality_2.5 <- 1- exp(-R.mort_1_5) # convert to annual probability
+    
+    R.mort_6_10 <- -log(1-mortality_5_10)/5 #convert to rates to get annual
+    p.mortality_6.10 <- 1- exp(-R.mort_6_10) # convert to annual probability
+    
+    v.mort <- c(mortality_1, rep(p.mortality_2.5,4), rep(p.mortality_6.10, 5))
+   
+    
+    for(age_i in age_0:(age_0+9)){ #repeat the model for each age in the group
+      
+      
+      m.survival[age_i, ] <- v.mort
+    
+      age_i = age_i +1
+    }
+  }
+  
+  m.survival <- replace(m.survival, is.na(m.survival), 0)
+  m.survival
+  
+}
+
+
+# Save the survival matrices for Stages by sex
+S1_f <- f.mort.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S1", sex_0=0)
+S2_f <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S2", sex_0=0)
+S3_f <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S3", sex_0=0)
+S4_f <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S4", sex_0=0)
+
+
+S1_m <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S1", sex_0=1)
+S2_m <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S2", sex_0=1)
+S3_m <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S3", sex_0=1)
+S4_m <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S4", sex_0=1)
+
+S1 <- rbind(S1_f, S1_m)
+S2 <- rbind(S2_f, S2_m)
+S3 <- rbind(S4_f, S3_m)
+S4 <- rbind(S4_f, S4_m)
+
+rownames(S1) <- rownames(S2) <-rownames(S3) <-rownames(S4) <-c(paste("1",c(1:100), sep = ""), paste("0",c(1:100), sep = ""))
+
+
+write.table(S1,"Data/survival/S1try.txt", sep = "\t")
+write.table(S2,"Data/survival/S2try.txt", sep = "\t")
+write.table(S3,"Data/survival/S3try.txt", sep = "\t")
+write.table(S4,"Data/survival/S4try.txt", sep = "\t")
+
+
+
+
+#OLD FUNCTION
+
+
 
 
 f.survival.calc <- function(df.mortality, m.survival, m.mortality_by.y, outcome, sex_0){
@@ -96,27 +168,3 @@ f.survival.calc <- function(df.mortality, m.survival, m.mortality_by.y, outcome,
   
 }
 
-# Save the survival matrices for Stages by sex
-S1_f <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S1", sex_0=0)
-S2_f <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S2", sex_0=0)
-S3_f <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S3", sex_0=0)
-S4_f <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S4", sex_0=0)
-
-
-S1_m <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S1", sex_0=1)
-S2_m <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S2", sex_0=1)
-S3_m <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S3", sex_0=1)
-S4_m <- f.survival.calc(df.mortality, m.survival, m.mortality_by.y, outcome = "S4", sex_0=1)
-
-S1 <- rbind(S1_f, S1_m)
-S2 <- rbind(S2_f, S2_m)
-S3 <- rbind(S4_f, S3_m)
-S4 <- rbind(S4_f, S4_m)
-
-rownames(S1) <- rownames(S2) <-rownames(S3) <-rownames(S4) <-c(paste("1",c(30:100), sep = ""), paste("0",c(30:100), sep = ""))
-
-
-write.table(S1,"Data/survival/S1try.txt", sep = "\t")
-write.table(S2,"Data/survival/S2try.txt", sep = "\t")
-write.table(S3,"Data/survival/S3try.txt", sep = "\t")
-write.table(S4,"Data/survival/S4try.txt", sep = "\t")
