@@ -31,12 +31,12 @@ results_no_screen = foreach::foreach(iterator = 1:n.loops, .options.RNG = optsN)
   }
   
 #Select appropriate parameter set to use
-p.set <- ifelse(run_mode =="PSA", i, 1) 
+p.set <- 1
 
 #Set up the model parameters according to current parameter set
 f.set_parameters(p.set)
 
-if(run_mode == "Calibration"){ #replace the calibrated parameters in the calibration mode only
+if(run_mode == "Calibration_rand"){ #replace the calibrated parameters in the calibration mode only with the sampled deterministic values in random calibration
   P.onset_age <- Calibr_parameters["P.onset_age", 1]
   P.onset_low.risk <- Calibr_parameters["P.onset_low.risk", 1]
   P.onset_sex <- Calibr_parameters["RR.onset_sex", 1]
@@ -45,11 +45,30 @@ if(run_mode == "Calibration"){ #replace the calibrated parameters in the calibra
   P.sympt.diag_B_HGBC <- Calibr_parameters["P.sympt.diag_B_HGBC", 1]
   P.sympt.diag_Age80_HGBC <- Calibr_parameters["P.sympt.diag_Age80_HGBC", 1]
   C.age.80.undiag.mort<- Calibr_parameters["C.age.80.undiag.mort", 1]
-  RR.All.Death.no_smoke <- Calibr_parameters["RR.All.Death.no_smoke", 1]
   shape.t.StI.StII <- Calibr_parameters["shape.t.StI.StII", 1]
   shape.t.StII.StIII <- Calibr_parameters["shape.t.StII.StIII", 1]
   shape.t.StIII.StIV <- Calibr_parameters["shape.t.StIII.StIV", 1]
 }
+
+
+
+if(run_mode =="Calibration_Bayes"){ #replace the calibrated parameters in the calibration mode only with values sampled from the distribution
+  P.onset_age <- Calibr_parameters["P.onset_age", 1]
+  P.onset_low.risk <- Calibr_parameters["P.onset_low.risk", 1]
+  P.onset_sex <- Calibr_parameters["RR.onset_sex", 1]
+  P.sympt.diag_LGBC <- Calibr_parameters["P.sympt.diag_LGBC", 1]
+  P.sympt.diag_A_HGBC <- Calibr_parameters["P.sympt.diag_A_HGBC", 1]
+  P.sympt.diag_B_HGBC <- Calibr_parameters["P.sympt.diag_B_HGBC", 1]
+  P.sympt.diag_Age80_HGBC <- Calibr_parameters["P.sympt.diag_Age80_HGBC", 1]
+  C.age.80.undiag.mort<- Calibr_parameters["C.age.80.undiag.mort", 1]
+  shape.t.StI.StII <- Calibr_parameters["shape.t.StI.StII", 1]
+  shape.t.StII.StIII <- Calibr_parameters["shape.t.StII.StIII", 1]
+  shape.t.StIII.StIV <- Calibr_parameters["shape.t.StIII.StIV", 1]
+  
+ # x <- runif(50, min=Calibr_parameters[1,]*0.9, max=Calibr_parameters[1,]*1.1)
+}
+
+
 # Allocate the time to stage at diagnosis for each person in HSE
 m.BC.T.to.Stage <- f.stage(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.t.StII.StIII, 
                            Mean.t.StIII.StIV, shape.t.StIII.StIV, n.i)

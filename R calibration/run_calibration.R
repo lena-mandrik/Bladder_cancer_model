@@ -22,15 +22,15 @@ set.seed(10)
 ##################################################################################
 
 ###Set up the Global Parameters
-run_mode <- "Calibration" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag and TR), "Deterministic" (m.Out only), "PSA" (m.Out only)
+run_mode <- "Calibration" # Available modes include "Testing" (returns all matrices), "Calibration_rand" (m.Diag and TR), "Calibration_Bayes" (m.Diag and TR),"Deterministic" (m.Out only), "PSA" (m.Out only)
 cohort <- 1 # 1 = all individuals start model at same age (cohort), 0 = individuals start in model at true (HSE) age
 cohort_age <- 30 #select starting age of cohort (hash out or set to anything if not using cohort)
-n.loops <- 100 # The number of model loops/PSA loops to run 
+n.loops <- 1 # The number of model loops/PSA loops to run 
 cl <- 1  # The cycle length (years) 
 n.t   <- if(cohort==1){100-cohort_age}else{70}  # The number of cycles to run 
 d.c <- 0.035 # The discount rate for costs
 d.e <- 0.035 # The discount rate for effects
-N_sets <- if(run_mode =="PSA"){n.loops}else{1} #Number of parameter sets required (for PSA). Minimum value = 1 (mean parameter values); maximum value = 1651 (number of calibrated correlated param sets)
+N_sets <- if(run_mode =="PSA" | run_mode =="Calibration_Bayes" ){n.loops}else{1} #Number of parameter sets required (for PSA). Minimum value = 1 (mean parameter values); maximum value = 1651 (number of calibrated correlated param sets)
 
 ###Load up all the functions and all the data for use in the model
 source("Load_all_files.R")
@@ -39,13 +39,9 @@ source("Load_all_files.R")
 ###Load up all the functions and all the data for use in the model
 ###############################################################################
 # Load the calibration inputs
-
 # Read all functions from all scripts within the R calibration folder
 
 sapply(list.files("R calibration/R",full.names=T), source)
-
-# Select the type of the calibration
-calibr_type <- "Random" # The options will include random and Bayesian ways
 
 # Calculate the size of the cohorts 
 Cohort_m <- sum(population[,"sex"]==1)
@@ -72,58 +68,17 @@ f.plot.target(Targets, CI_targets)
 # Define parameters to calibrate
 Calibr_parameters <- Params[c("P.onset", "P.onset_low.risk", "P.onset_age", "RR.onset_sex", "P.sympt.diag_LGBC", "P.sympt.diag_A_HGBC",
                               "P.sympt.diag_B_HGBC", "P.sympt.diag_Age80_HGBC", "C.age.80.undiag.mort",
-                              "RR.All.Death.no_smoke", "shape.t.StI.StII", "shape.t.StII.StIII", "shape.t.StIII.StIV") ,]
+                               "shape.t.StI.StII", "shape.t.StII.StIII", "shape.t.StIII.StIV") ,]
 v.param_names <- rownames(Calibr_parameters) # number of parameters to calibrate 
 n_params <- length(v.param_names)
 
-n_samples <-3 # number of calibration runs
-
-time_0 <- Sys.time() # Add in the end the run time calculation
-
-# Search dimensions. Use for random search algorithm only
-lower_boud <- c(0.000001, 0.1, 1.001, 1.001, 0.005, 0.001, 1.01, 0.85, -0.3, 0.2, rep(1.005,3)) #for symtomatic presentation requires other limits - A <15%, B =5-40%, C=10-60%, D-30-100%
-upper_boud <- c(0.001, 0.6, 1.2, 1.9, 0.1, 0.2, 1.9, 1, -0.01, 0.99, rep(1.5,3))
-
-# Sample using Latin Hypercube
-sample_LH <- randomLHS(n_samples, n_params)
-
-# Re-scale to min/max
-m.sample.params <- matrix(nrow=n_samples, ncol = n_params)
-colnames(m.sample.params) <- v.param_names
-
-for(i in 1:n_params){
-  m.sample.params[,i] <- qunif(sample_LH[,i],
-                               min = lower_boud[i],
-                               max = upper_boud[i])
-}
-write.csv(m.sample.params, file="R calibration\\ParametersInput.csv")
+n_samples <-2 # number of calibration runs
 
 # Goodness-of-fit outcomes
 m.GOF <-  matrix(nrow=n_samples, ncol = ncol(Targets)-1)
 colnames(m.GOF) <- paste0(c(v.target_names), "_fit")
 
-# Check fitted parameters from the previous calibration
-fitted_params <- (read.table("R calibration/Outputs/parameters_fit.txt", header = F, row.names=1)) 
-Calibr_parameters[ ,1] <- fitted_params[,1]
-
-# Run the calibration loops
-
-for(run in 1:n_samples){
-  
-  Calibr_parameters <- as.matrix(m.sample.params[run,], ncol = 1) # get the inputs for calibrating parameters
-  
-  source("R calibration\\Main_model_calibration.R") # run the model
-  
-  output <- f.calibr.output(results_no_screen) # extract the outputs
-  
-  Predict <- cbind(output$rate_outcomes_m, output$rate_outcomes_f)
-  
-  # log likelihood instead of sum of squared errors
-  
-  m.GOF <- f.GOF.calc(run, m.GOF, Targets, SE, Predict)
-  
-
-  if(run%%2==0){
-    write.csv(m.GOF, file="R calibration\\Outputs\\m.GOF.csv")}
-} 
-
+if(run_mode == "Calibration_rand"){
+  source("R calibration//R//Random//f.random.R")
+  print(output)
+}

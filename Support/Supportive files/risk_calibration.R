@@ -1,6 +1,6 @@
 # The calibration of the risks for smokers and past smokers
 
-f.risk.calibration <- function(results_no_screen){
+f.risk.calibration <- function(results_no_screen, pop){
   
   l.Diag <- map(results_no_screen, ~.x$m.Diag)
   #TR_m <- map(results_no_screen, ~.x$TR_m)
@@ -18,18 +18,19 @@ f.risk.calibration <- function(results_no_screen){
   pop_past.smoke <- nrow(subset(pop, pop[ , "past_smoke"] ==1))
   pop_no.smoke <- nrow(subset(pop, pop[ , "no_smoke"] ==1))
   
-  pop_smoke <- c(pop_past.smoke, pop_smoke, pop_no.smoke)
+  pop_smoke <- c(pop_smoke, pop_past.smoke, pop_no.smoke)
   
   incidence_by_smoke <- outcomes_smoke/pop_smoke
   
-  RR_smoke <- incidence_by_smoke[2]/incidence_by_smoke[3]
-  RR_past.smoke <- incidence_by_smoke[1]/incidence_by_smoke[3]
+  RR_smoke <- incidence_by_smoke[1]/incidence_by_smoke[3]
+  RR_past.smoke <- incidence_by_smoke[2]/incidence_by_smoke[3]
   
   risks <- cbind(RR_smoke, RR_past.smoke)
   
   risks
   
 }
+
 
 
 f.diag.outcomes <- function(m.Diag){
