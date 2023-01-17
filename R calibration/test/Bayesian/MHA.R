@@ -6,10 +6,13 @@ Calibr_parameters[,1] <- fitted_params[,1]
 
 sd_params <- abs(fitted_params[,1]*0.1)
 
+step <- abs(fitted_params[,1]*0.1) #10% step
 
 ######################################################
 # Likelihood function
-likelihood = function(param){
+likelihood = function(Calibr_parameters){
+  
+  #Calibr_parameters[,1] <- param
   
   source("R calibration\\Main_model_calibration.R") # run the model
   
@@ -17,9 +20,9 @@ likelihood = function(param){
   
   Predict <- cbind(output$rate_outcomes_m, output$rate_outcomes_f) #data prediction with given parameters
   
-  m.GOF <- (f.GOF.calc(1, m.GOF, Targets, SE, Predict))[1,]   # log likelihood instead of sum of squared errors
+  likelihood <- (f.GOF.calc(1, m.GOF, Targets, SE, Predict))[1,]   # log likelihood instead of sum of squared errors
   
-  sum_likelihoods = sum(m.GOF)
+  sum_likelihoods = sum(likelihood)
   
   return(sum_likelihoods)
 
@@ -52,26 +55,34 @@ posterior = function(param){
 
 ###########################################################
 proposalfunction = function(param){
-  return(rnorm(length(param), mean = param, sd= sd_params))
+  return(rnorm(length(param), mean = param, sd= step))
 }
 
 
 ######## Metropolis algorithm ################
 
 
-run_metropolis_MCMC = function(startvalue, iterations){
+run_metropolis_MCMC = function(startvalue, iterations, Calibr_parameters){
   
-  chain = array(dim = c(iterations+1,nrow(fitted_params)))
+  chain = array(dim = c(iterations+1,nrow(startvalue)))
   
-  report_prob = matrix(nrow=iterations, ncol=1)
+  report_prob = matrix(nrow=iterations+1, ncol=1)
   
-  chain[1,] = t(fitted_params[,1])
+  posterior_rep =matrix(nrow=iterations+1, ncol=2)
+  
+  chain[1,] = t(startvalue[,1])
   
   for (i in 1:iterations){
     
     proposal = proposalfunction(t(chain[i,]))
     
-    probab = exp(posterior(proposal) - posterior(chain[i,]))
+    Calibr_parameters[,1] <<- proposal #save to the Calibr_parameters in Global env
+    posterior_proposal = posterior(Calibr_parameters)
+    
+    Calibr_parameters[,1] <<- chain[i,] #save to the Calibr_parameters in Global env
+    posterior_current = posterior(Calibr_parameters)
+    
+    probab = exp(posterior_proposal - posterior_current)
     
     if (runif(1) < probab){
       chain[i+1,] = proposal
@@ -80,19 +91,28 @@ run_metropolis_MCMC = function(startvalue, iterations){
     }
     
     report_prob[i]=probab
+    posterior_rep[i,1]=posterior_proposal
+    posterior_rep[i,2]=posterior_current
+    
   }
   
-  write.csv(report_prob, file="R calibration\\Outputs\\test_prob.csv")
+ # write.csv(report_prob, file="R calibration\\Outputs\\test_prob.csv")
 
-  return(chain)
+  output <- cbind(chain,report_prob,posterior_rep)
+  
+  return(output)
 }
 
-test <- run_metropolis_MCMC(startvalue, 50)
+####################################################################################################################
 
-# solve why all probabilities are 1
 
-  
-  
+test <- run_metropolis_MCMC(fitted_params, 10, Calibr_parameters)
+
+
+
+
+
+
 
 
 
