@@ -1,5 +1,36 @@
 
-#####################################################################
+
+
+#########################################################################################
+# Function to format the calibration parameters using the fitted parameters from the random calibration as the starting set
+
+
+# Load starting parameters and set up the step
+
+f.load.start.param <- function(Calibr_parameters){
+  
+  # Load the calibrated parameters from the random calibration
+  fitted_params <- (read.table("R calibration/Outputs/parameters_fit.txt", header = F, row.names=1)) #exclude the parameter on RR death for no smokers, as it was calculated
+  Calibr_parameters[1:nrow(fitted_params),1] <- fitted_params[,1]
+  
+  # Add the step to the matrix
+  step_calibr <- matrix(0.3, ncol=1, nrow=nrow(Calibr_parameters))
+  names.col_param <- colnames(Calibr_parameters)
+  Calibr_parameters <- cbind(Calibr_parameters, step_calibr)
+  colnames(Calibr_parameters) <- c(names.col_param, "step")
+  
+  # Update alpha and beta for parameters with beta distribution
+  Calibr_parameters["P.onset", "Param1"]=((1-Calibr_parameters["P.onset", "Mean"])/(0.01^2)^2 -1/Calibr_parameters["P.onset", "Mean"])*Calibr_parameters["P.onset", "Mean"]^2
+  Calibr_parameters["P.onset", "Param2"]=Calibr_parameters["P.onset", "Param1"]*(1/Calibr_parameters["P.onset", "Mean"]-1)
+  
+  Calibr_parameters["P.onset_low.risk", "Param1"]=((1-Calibr_parameters["P.onset_low.risk", "Mean"])/(0.01^2)^2 -1/Calibr_parameters["P.onset_low.risk", "Mean"])*Calibr_parameters["P.onset_low.risk", "Mean"]^2
+  Calibr_parameters["P.onset_low.risk", "Param2"]=Calibr_parameters["P.onset_low.risk", "Param1"]*(1/Calibr_parameters["P.onset_low.risk", "Mean"]-1)
+  
+  return(Calibr_parameters)
+}
+
+
+
 
 #####Function to extract N of people alive at each age group. 
 ### The function uses the output matrix TR as an input and sums number of either population alive by age
@@ -376,13 +407,13 @@ f.plot.target <- function(Targets, CI_targets){
 ######################################################
 # function to calculate GOF in the random calibration approach
 
-f.GOF.calc <- function(run, m.GOF, Targets, SE, Prediction){
+f.GOF.calc <- function(run, m.GOF, Targets, SE, Predict){
   
   Targets <- Targets[ ,-1] #Get rid of the Age column, which the 1st one
 
   for(n in 1:ncol(Targets)){
     
-    distribution <- dnorm(x = Targets[,n], mean = Prediction[,n], sd = SE[,n], log = T)
+    distribution <- dnorm(x = Targets[,n], mean = Predict[,n], sd = SE[,n], log = T)
     distribution[which(!is.finite(distribution))] <-0 # replace with zero infinite and undefined numbers
     m.GOF[run,n]<- sum(distribution)
     #m.GOF[run,n]<- sum(dnorm(x = Targets[,n], mean = Prediction[,n], sd = SE[,n], log = T))

@@ -27,14 +27,20 @@ f.symptom <- function(m.Diag, m.State, m.Rand, pop, t, m.M) {
   
   TP.Sympt.diag <- m.Diag[ ,"BC_state"]*P.sympt.diag_A_HGBC*P.sympt.diag_B_HGBC^m.Diag[ ,"yr_onset"]
   
-  # Update for those who are older than 80 with the decrement in a symptomatic presentation rate
+  # Update for those who are older than 80 with the decrement in a symptomatic presentation rate for HGBC
   age_sympt_decrement <- P.sympt.diag_Age80_HGBC^(pop[, "age"]- 80)
   age_sympt_decrement <- replace(age_sympt_decrement, age_sympt_decrement>1,1)
   risk.Sympt.diag <- TP.Sympt.diag * age_sympt_decrement
   
+  # Update for those who are older than 80 with the decrement in a symptomatic presentation rate for LGBC
+  
+  age_sympt_decrement_LG <-P.sympt.diag_LGBC^(pop[, "age"]- 80)
+  age_sympt_decrement_LG <- replace(age_sympt_decrement_LG, age_sympt_decrement_LG>1,1)
+  risk.Sympt.diag_LG <- age_sympt_decrement_LG * P.sympt.diag_LGBC
+  
   #Determine who is newly diagnosed
-  new_diag_HG <- (m.Rand[ ,"SYMPT", t] < risk.Sympt.diag) & elig_HG #for HG cancer
-  new_diag_LG <- (m.Rand[ ,"SYMPT", t] < P.sympt.diag_LGBC) & elig_LG #for LG cancer
+  new_diag_HG <- (m.Rand[ ,"SYMPT_HG", t] < risk.Sympt.diag) & elig_HG #for HG cancer
+  new_diag_LG <- (m.Rand[ ,"SYMPT_LG", t] < risk.Sympt.diag_LG) & elig_LG #for LG cancer
   
   #Update m.Diag matrix for symptomatic diagnosis for high grade cancers
   m.Diag[, "new_diag"] <- new_diag_HG

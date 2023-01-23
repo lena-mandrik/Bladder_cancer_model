@@ -20,9 +20,7 @@ for(i in 1:n_params){
 }
 write.csv(m.sample.params, file="R calibration\\ParametersInput.csv")
 
-# Goodness-of-fit outcomes
-m.GOF <-  matrix(nrow=n_samples, ncol = ncol(Targets)-1)
-colnames(m.GOF) <- paste0(c(v.target_names), "_fit")
+
 
 
 # Run the calibration loops

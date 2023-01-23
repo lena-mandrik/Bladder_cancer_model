@@ -1,18 +1,14 @@
 ##  This is the code to run calibration either with a Metropolis Hasting algorithm
 
-# Use randomly calibrated parameters as priors
-fitted_params <- (read.table("R calibration/Outputs/parameters_fit.txt", header = F, row.names=1)) #exclude the parameter on RR death for no smokers, as it was calculated
-Calibr_parameters[,1] <- fitted_params[,1]
+# Load starting parameters and set up the step
+Calibr_parameters <- f.load.start.param(Calibr_parameters)
 
 sd_params <- abs(fitted_params[,1]*0.1)
 
-step <- abs(fitted_params[,1]*0.1) #10% step
 
 ######################################################
 # Likelihood function
 likelihood = function(Calibr_parameters){
-  
-  #Calibr_parameters[,1] <- param
   
   source("R calibration\\Main_model_calibration.R") # run the model
   
@@ -27,11 +23,13 @@ likelihood = function(Calibr_parameters){
   return(sum_likelihoods)
 
 }
+
 ###########################################################
 # Prior function
 
 
 prior = function(param){ #uniform distribution for priors
+  
   Param_prior <- rep(0, nrow(fitted_params))
   
     for(i in 1:nrow(fitted_params)){ 
@@ -52,29 +50,111 @@ posterior = function(param){
 }
 
 
-
+# The Distributions proposed:
+# 4 = Uniform for parameters on age and sex onset and shape for time since onset
+# 5 - Normal for C.age.80.undiag.mort
+# 7 = Dirichlet for probabilities
+# 8 = Truncated normal
 ###########################################################
-proposalfunction = function(param){
-  return(rnorm(length(param), mean = param, sd= step))
+
+
+proposalfunction = function(param, Param_sets, N_sets){
+  
+# Sample for parameters with the uniform distribution
+  Param_sets[ ,"shape.t.StI.StII"] <<-  runif(N_sets, min = param["shape.t.StI.StII","Mean"] - param["shape.t.StI.StII","step"]*param["shape.t.StI.StII","Mean"], max = param["shape.t.StI.StII","Mean"] + param["shape.t.StI.StII","step"]*param["shape.t.StI.StII","Mean"])
+  Param_sets[ ,"shape.t.StII.StIII"] <<-  runif(N_sets, min = param["shape.t.StII.StIII","Mean"] - param["shape.t.StII.StIII","step"]*param["shape.t.StII.StIII","Mean"], max = param["shape.t.StII.StIII","Mean"] + param["shape.t.StII.StIII","step"]*param["shape.t.StII.StIII","Mean"])
+  Param_sets[ ,"shape.t.StIII.StIV"] <<-  runif(N_sets, min = param["shape.t.StIII.StIV","Mean"] - param["shape.t.StIII.StIV","step"]*param["shape.t.StIII.StIV","Mean"], max = param["shape.t.StIII.StIV","Mean"] + param["shape.t.StIII.StIV","step"]*param["shape.t.StIII.StIV","Mean"])
+  Param_sets[ ,"C.age.80.undiag.mort"] <<-  runif(N_sets, min = param["C.age.80.undiag.mort","Mean"] + param["C.age.80.undiag.mort","step"]*param["C.age.80.undiag.mort","Mean"], max = param["C.age.80.undiag.mort","Mean"] - param["C.age.80.undiag.mort","step"]*param["C.age.80.undiag.mort","Mean"])
+
+# Sample for parameters with the truncated normal distribution
+  Param_sets[ ,"P.onset_age"] <<-  truncnorm::rtruncnorm(N_sets, a =Calibr_parameters["P.onset_age", "Param1"], b=Calibr_parameters["P.onset_age", "Param2"], 
+                        mean=Calibr_parameters["P.onset_age", "Mean"], sd=Calibr_parameters["P.onset_age","step"]) #re-set the sd 
+  
+  Param_sets[ ,"RR.onset_sex"] <<-  truncnorm::rtruncnorm(N_sets, a =Calibr_parameters["RR.onset_sex", "Param1"], b=Calibr_parameters["RR.onset_sex", "Param2"], 
+                                                        mean=Calibr_parameters["RR.onset_sex", "Mean"], sd=Calibr_parameters["RR.onset_sex","step"]) #re-set the sd 
+  
+  Param_sets[ ,"P.sympt.diag_LGBC"] <<-  truncnorm::rtruncnorm(N_sets, a =Calibr_parameters["P.sympt.diag_LGBC", "Param1"], b=Calibr_parameters["P.sympt.diag_LGBC", "Param2"], 
+                                                        mean=Calibr_parameters["P.sympt.diag_LGBC", "Mean"], sd=Calibr_parameters["P.sympt.diag_LGBC","step"]) #re-set the sd 
+  Param_sets[ ,"P.sympt.diag_A_HGBC"] <<-  truncnorm::rtruncnorm(N_sets, a =Calibr_parameters["P.sympt.diag_A_HGBC", "Param1"], b=Calibr_parameters["P.sympt.diag_A_HGBC", "Param2"], 
+                                                        mean=Calibr_parameters["P.sympt.diag_A_HGBC", "Mean"], sd=Calibr_parameters["P.sympt.diag_A_HGBC","step"]) #re-set the sd 
+  Param_sets[ ,"P.sympt.diag_Age80_HGBC"] <<-  truncnorm::rtruncnorm(N_sets, a =Calibr_parameters["P.sympt.diag_Age80_HGBC", "Param1"], b=Calibr_parameters["P.sympt.diag_Age80_HGBC", "Param2"], 
+                                                        mean=Calibr_parameters["P.sympt.diag_Age80_HGBC", "Mean"], sd=Calibr_parameters["P.sympt.diag_Age80_HGBC","step"]) #re-set the sd 
+  
+  
+  # Re-calculate Param1 and Param2 based on the means and the distributions
+  
+  # Update alpha and beta for parameters with beta distribution
+  Calibr_parameters["P.onset", "Mean"] <- truncnorm::rtruncnorm(1, a=0, b=1, mean=param["P.onset", "Mean"], sd=param["P.onset","step"])
+  Calibr_parameters["P.onset_low.risk", "Mean"] <- truncnorm::rtruncnorm(1, a=0, b=1, mean=param["P.onset_low.risk", "Mean"], sd=param["P.onset_low.risk","step"])
+  
+  Calibr_parameters["P.onset", "Param1"]<- ((1-Calibr_parameters["P.onset", "Mean"])/(0.01^2)^2 -1/Calibr_parameters["P.onset", "Mean"])*Calibr_parameters["P.onset", "Mean"]^2
+  Calibr_parameters["P.onset", "Param2"]<- Calibr_parameters["P.onset", "Param1"]*(1/Calibr_parameters["P.onset", "Mean"]-1)
+  
+  Calibr_parameters["P.onset_low.risk", "Param1"]<- ((1-Calibr_parameters["P.onset_low.risk", "Mean"])/(0.01^2)^2 -1/Calibr_parameters["P.onset_low.risk", "Mean"])*Calibr_parameters["P.onset_low.risk", "Mean"]^2
+  Calibr_parameters["P.onset_low.risk", "Param2"]<- Calibr_parameters["P.onset_low.risk", "Param1"]*(1/Calibr_parameters["P.onset_low.risk", "Mean"]-1)
+  
+  Param_sets[ ,"P.onset"] <<- rbeta(N_sets, shape1=param["P.onset", "Param1"], shape2=param["P.onset", "Param2"])
+  Param_sets[ ,"P.onset_low.risk"] <<- rbeta(N_sets, shape1=param["P.onset_low.risk", "Param1"], shape2=param["P.onset_low.risk", "Param2"])
+  
+  #proposal <- runif(1, min = param - step*param, max = param + step*param)
+  
+  #return(rnorm(length(param), mean = param, sd= step))
+  
+  return(Param_sets)
+
+}
+
+
+f.proposal.param = function(param, N_sets){
+  
+  # Sample for parameters with the uniform distribution
+  param[which(param[ ,"Distribution"]==4), "Param1"] <-  param[which(param[ ,"Distribution"]==4),"Mean"] - param[which(param[ ,"Distribution"]==4),"step"]*param[which(param[ ,"Distribution"]==4),"Mean"]
+  param[which(param[ ,"Distribution"]==4), "Param2"] <-  param[which(param[ ,"Distribution"]==4),"Mean"] + param[which(param[ ,"Distribution"]==4),"step"]*param[which(param[ ,"Distribution"]==4),"Mean"]
+  
+    
+  # Sample for parameters with the truncated normal distribution
+  param[which(param[ ,"Distribution"]==7), "Param1"] <-   truncnorm::rtruncnorm(nrow(param[which(param[ ,"Distribution"]==7), ]), a=1, b=1.7, mean =param[which(param[ ,"Distribution"]==7), "Param1"], 
+                                                               sd= param[which(param[ ,"Distribution"]==7), "Param2"])
+
+  # Re-calculate Param1 and Param2 based on the means and the distributions for beta distribution
+  
+  # Update alpha and beta for parameters with beta distribution
+  param["P.onset", "Mean"] <- truncnorm::rtruncnorm(1, a=0, b=1, mean=param["P.onset", "Mean"], sd=param["P.onset","step"])
+  param["P.onset_low.risk", "Mean"] <- truncnorm::rtruncnorm(1, a=0, b=1, mean=param["P.onset_low.risk", "Mean"], sd=param["P.onset_low.risk","step"])
+  
+  param["P.onset", "Param1"]<- ((1-param["P.onset", "Mean"])/(0.01^2)^2 -1/param["P.onset", "Mean"])*param["P.onset", "Mean"]^2
+  param["P.onset", "Param2"]<- param["P.onset", "Param1"]*(1/param["P.onset", "Mean"]-1)
+  
+  param["P.onset_low.risk", "Param1"]<- ((1-param["P.onset_low.risk", "Mean"])/(0.01^2)^2 -1/param["P.onset_low.risk", "Mean"])*param["P.onset_low.risk", "Mean"]^2
+  param["P.onset_low.risk", "Param2"]<- param["P.onset_low.risk", "Param1"]*(1/param["P.onset_low.risk", "Mean"]-1)
+  
+   #proposal <- runif(1, min = param - step*param, max = param + step*param)
+  
+  #return(rnorm(length(param), mean = param, sd= step))
+  
+  return(param)
+  
 }
 
 
 ######## Metropolis algorithm ################
 
-
-run_metropolis_MCMC = function(startvalue, iterations, Calibr_parameters){
+run_metropolis_MCMC = function(n_samples, Calibr_parameters, step){
   
-  chain = array(dim = c(iterations+1,nrow(startvalue)))
+  chain = array(dim = c(n_samples+1,nrow(Calibr_parameters)*2))
   
-  report_prob = matrix(nrow=iterations+1, ncol=1)
+  report_prob = matrix(nrow=n_samples+1, 0, ncol=1)
   
-  posterior_rep =matrix(nrow=iterations+1, ncol=2)
+  posterior_rep =matrix(nrow=n_samples+1, ncol=2)
   
-  chain[1,] = t(startvalue[,1])
+  chain[1,] = t(c(Calibr_parameters[,3], Calibr_parameters[,4]))
   
   for (i in 1:iterations){
     
-    proposal = proposalfunction(t(chain[i,]))
+    #proposal = proposalfunction(t(chain[i,]), step)
+    
+    Calibr_parameters = f.proposal.param(Calibr_parameters, N_sets)
+    chain[i,] <- t(c(Calibr_parameters[,"Param1"], Calibr_parameters[,"Param2"])) #record the sampled parameters
     
     Calibr_parameters[,1] <<- proposal #save to the Calibr_parameters in Global env
     posterior_proposal = posterior(Calibr_parameters)
@@ -84,21 +164,27 @@ run_metropolis_MCMC = function(startvalue, iterations, Calibr_parameters){
     
     probab = exp(posterior_proposal - posterior_current)
     
-    if (runif(1) < probab){
+    if (runif(1) < probab | runif(1) <0.05){ #accept all parameters with better fit and 5% with worse fit
       chain[i+1,] = proposal
+      report_prob[i]=1
+      
     }else{
       chain[i+1,] = chain[i,]
     }
     
-    report_prob[i]=probab
     posterior_rep[i,1]=posterior_proposal
     posterior_rep[i,2]=posterior_current
     
   }
   
+  if(i%%50==0){
+    if(sum(report_prob[(i-100):i])/100 < 0.1){step = step*0.9}
+  }
  # write.csv(report_prob, file="R calibration\\Outputs\\test_prob.csv")
 
   output <- cbind(chain,report_prob,posterior_rep)
+  
+  colnames(output) <- c(rownames(startvalue), "Accept", "posterior_proposal", "posterior_current")
   
   return(output)
 }
@@ -106,7 +192,7 @@ run_metropolis_MCMC = function(startvalue, iterations, Calibr_parameters){
 ####################################################################################################################
 
 
-test <- run_metropolis_MCMC(fitted_params, 10, Calibr_parameters)
+test <- run_metropolis_MCMC(fitted_params, 200, Calibr_parameters, step)
 
 
 
@@ -118,19 +204,6 @@ test <- run_metropolis_MCMC(fitted_params, 10, Calibr_parameters)
 
 
 
-Distributions <-matrix(NA, nrow=nrow(fitted_params), ncol =4)
-
-Distributions[ ,1] <- fitted_params[,1]
-rownames(Distributions) <- rownames(fitted_params)
-
-# The Distributions proposed:
-# 4 = Uniform for parameters on age and sex onset and shape for time since onset
-# 5 - Normal for C.age.80.undiag.mort
-# 7 = Dirichlet for probabilities 
-
-Distributions[ ,2] <- rep(4, nrow(fitted_params))  # the distribution to consider for priors. Use uniform in the beginning. c(7,7,4,4,rep(7,4),5,7,rep(4,3)) #Define the distribution for the priors
-Distributions[ ,3] <- Distributions[ ,1]*0.9 # set the uniform distribution 90% from the parameter value
-Distributions[ ,4] <- Distributions[ ,1]*1.1 # set the uniform distribution 90% from the parameter value
 
 
 
@@ -138,65 +211,3 @@ Distributions[ ,4] <- Distributions[ ,1]*1.1 # set the uniform distribution 90% 
 
 
 
-
-Param_sets[which(Params[, "Distribution"] ==4),2:N_sets] <- runif(length(Param_sets[which(Params[, "Distribution"] ==4),1])*(N_sets-1), 
-                                                                  min=Params[which(Params[, "Distribution"] ==4), "Param1"], 
-                                                                  max=Params[which(Params[, "Distribution"] ==4), "Param2"])
-
-
-
-
- 
-
-# Example: plot the likelihood profile of the slope a
-slopevalues = function(x){
-  
-  Calibr_parameters[,1] <- x
-  
-  return(likelihood(Calibr_parameters))}
-
-slopelikelihoods = lapply(x, slopevalues )
-plot (seq(3, 7, by=.05), slopelikelihoods , type="l", xlab = "values of slope parameter a", ylab = "Log likelihood")
-
-
-
-
-# Set prior distributions
-# Check fitted parameters from the previous calibration
-
-
-
-
-
-
-
-
-
-# Set the parameters for claibration
-
-  Distributions["P.onset", c(3:4)] <- 
-  Distributions["P.onset_low.risk", c(3:4)] <-
-  Distributions["P.onset_age", c(3:4)] <-
-  Distributions["P.onset_sex", c(3:4)] <-
-  Distributions["P.sympt.diag_LGBC", c(3:4)] <-
-  Distributions["P.sympt.diag_A_HGBC", c(3:4)] <-
-  Distributions["P.sympt.diag_B_HGBC", c(3:4)] <-
-  Distributions["P.sympt.diag_Age80_HGBC", c(3:4)] <-
-  Distributions["C.age.80.undiag.mort", c(3:4)] <-
-  Distributions["RR.All.Death.no_smoke", c(3:4)] <-
-  Distributions["shape.t.StI.StII", c(3:4)] <-
-  Distributions["shape.t.StII.StIII", c(3:4)] <-
-  Distributions["shape.t.StIII.StIV", c(3:4)] <-
-
-  
-
-
-
-
-
-
-startvalue = c(4,0,10)
-chain = run_metropolis_MCMC(startvalue, 10000)
-
-burnIn = 5000
-acceptance = 1-mean(duplicated(chain[-(1:burnIn),]))

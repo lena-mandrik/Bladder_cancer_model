@@ -3,10 +3,12 @@
 #' @details
 #' This function uses the mean and the shape to calculate the scale and sample from the Weibull distribution 
 
-f.Weibull.sample <- function(w_mean, shape){
+
+f.Weibull.sample <- function(w_mean, shape, n.i){
+  
   scale = w_mean/gamma(1+1/shape)
   
-  time_to_state <- rweibull(1, shape, scale)
+  time_to_state <- rweibull(n.i, shape, scale)
   
   time_to_state
   
@@ -20,34 +22,20 @@ f.Weibull.sample <- function(w_mean, shape){
 #' @return matrix of transition probabilities for each individual
 
 f.stage <- function(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.t.StII.StIII, 
-                    Mean.t.StIII.StIV, shape.t.StIII.StIV){
+                    Mean.t.StIII.StIV, shape.t.StIII.StIV, n.i){
   
-  T.onsetToStage2 <- f.Weibull.sample(Mean.t.StI.StII, shape.t.StI.StII)
-  T.Stage3 <- f.Weibull.sample(Mean.t.StII.StIII, shape.t.StII.StIII)
-  T.Stage4 <- f.Weibull.sample(Mean.t.StIII.StIV, shape.t.StIII.StIV)
+  T.onsetToStage2 <- f.Weibull.sample(Mean.t.StI.StII, shape.t.StI.StII, n.i)
+  T.Stage3 <- f.Weibull.sample(Mean.t.StII.StIII, shape.t.StII.StIII, n.i)
+  T.Stage4 <- f.Weibull.sample(Mean.t.StIII.StIV, shape.t.StIII.StIV, n.i)
   
   T.onsetToStage3 <- T.onsetToStage2+T.Stage3
   T.onsetToStage4 <- T.onsetToStage3+T.Stage4
-  v.Stages <- c(T.onsetToStage2, T.onsetToStage3, T.onsetToStage4)
+  v.Stages <- round(cbind(T.onsetToStage2, T.onsetToStage3, T.onsetToStage4))
   
   v.Stages
   
 }
 
-
-#' @details
-#' This code assigns the time till next stage for each person in HSE probabilistically
-#' @params 
-#' m.BC.T.to.Stage - matrix containing the time to the stage for each person in HSE
-
-f.stage.assign <- function(m.BC.T.to.Stage){
-  
-  for(i in 1:n.i){
-    m.BC.T.to.Stage[i,] <- f.stage(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.t.StII.StIII, Mean.t.StIII.StIV, shape.t.StIII.StIV)
-  }
-  m.BC.T.to.Stage <- round(m.BC.T.to.Stage)
-  m.BC.T.to.Stage
-}
 
 #' @details
 #' This function sets parameters 
@@ -63,11 +51,8 @@ f.set_parameters <- function(p.set) {
     names(vector.Param) <- c(Param.names[i])
     
     assign(names(vector.Param), value =vector.Param, envir = .GlobalEnv)
-    
   }
- 
-  
-}
+ }
 
 
 #' @details
@@ -89,7 +74,7 @@ f.generate_parameters <- function(Params, N_sets){
     
     #Sample from distributions 1=Beta; 2=Gamma, 3=Log-normal, 4=Uniform, 5=Normal, 6=Constant
     
-    Param_sets[which(Params[, "Distribution"] ==1),2:N_sets] <- rbeta(length(Param_sets[which(Params[, "Distribution"] ==1),1])*(N_sets-1), 
+    Param_sets[which(Params[, "Distribution"] ==1),1:N_sets] <- rbeta(length(Param_sets[which(Params[, "Distribution"] ==1),1])*(N_sets-1), 
                                                                       shape1=Params[which(Params[, "Distribution"] ==1), "Param1"], 
                                                                       shape2=Params[which(Params[, "Distribution"] ==1), "Param2"])
     
@@ -112,6 +97,14 @@ f.generate_parameters <- function(Params, N_sets){
     Param_sets[which(Params[, "Distribution"] ==6),2:N_sets] <- Param_sets[which(Params[, "Distribution"] ==6),1]
     
     
+    Param_sets[which(Params[, "Distribution"] ==7),2:N_sets] <- truncnorm::rtruncnorm(length(Param_sets[which(Params[, "Distribution"] ==7),1])*(N_sets-1), 
+                                                                      a=1, 
+                                                                      b=1.7, mean = Params[which(Params[, "Distribution"] ==7), "Param1"], sd=Params[which(Params[, "Distribution"] ==7), "Param2"])
+    
+    Param_sets["C.age.80.undiag.mort",2:N_sets] <- runif(length(Param_sets["C.age.80.undiag.mort",1])*(N_sets-1), 
+                                                                      min=Params["C.age.80.undiag.mort", "Param2"], 
+                                                                      max=Params["C.age.80.undiag.mort", "Param1"])
+    
   }
   
   Param_sets <- t(Param_sets)
@@ -123,67 +116,12 @@ f.generate_parameters <- function(Params, N_sets){
   
 }
 
-### Functions for processing input data ###
-
-#' @details
-#' This function calculates individual bladder cancer risk based on the risk factors 
-#' @params
-#' pop: population matrix containing individual level attributes
-#' @return Updated pop matrix with individual risk and probabilities of cancer onset in a specific year
-#'
-#'
-
-
-f.risk.calc <- function(pop) {
-  
-#Calculate mean population attributes.
-# Sex associated risk is the only calibrated parameter
-mean.p_smoke <- sum(pop[, "current_smoke"] * pop[, "weighting"])/sum(pop[, "weighting"])
-mean.p_psmoke <- sum(pop[, "past_smoke"] * pop[, "weighting"])/sum(pop[, "weighting"])
-mean.p_occupation <- sum(pop[, "occupation"] * pop[, "weighting"])/sum(pop[, "weighting"])
-mean.p_sex <- sum(pop[, "sex"] * pop[, "weighting"])/sum(pop[, "weighting"])
-
-#Calculate individual BC risk by multiplying risks for each attribute
-pop[, "risk"] <- (RR.current_smoke^(pop[, "current_smoke"] - mean.p_smoke))*
-  (RR.past_smoke ^ (pop[, "past_smoke"] - mean.p_psmoke))*
-  (RR.manufacture ^ (pop[, "occupation"] - mean.p_occupation))*(P.onset_sex^(pop[, "sex"] - mean.p_sex))
-
-# Onset of the bladder cancer at time t by age
-pop[, "p.BC.i"] <-(P.onset*P.onset_age^(pop[, "age"] -30))*pop[, "risk"]
-
-#check
-#no_smoke <- rep(0,nrow(pop))
-#no_smoke <- replace(no_smoke, pop[, "past_smoke"] !=1 & pop[, "current_smoke"] !=1, 1)
-#mean(pop[, "current_smoke"]) + mean(pop[, "past_smoke"]) +mean(no_smoke)
-
-#for (variable in ls()) {
- # assign(variable, get(variable), envir = .GlobalEnv)
-#}
-
-pop
-
-}
-
-#' @details
-#' This function defines whether a person in HSE remains a smoker based on an annual probability to quit smoking
-#' @params
-#' pop: population matrix containing individual level attributes
-#' @return Updated pop matrix with updated 
-#' 
-
- f.smoke.change <- function(pop) {
-  # Update smoking status, considering the proportion of smokers who quite smoking during one year
-  quit_smoke <- rbinom(nrow(pop), 1, prob =1-P.quit.smoke)
-  pop[,"current_smoke"] <- replace(pop[,"current_smoke"],pop[,"current_smoke"]==1 & quit_smoke ==0, 0)
-  pop[,"past_smoke"] <- replace(pop[,"past_smoke"], pop[,"no_smoke"]==0 & pop[,"past_smoke"]==0 & quit_smoke ==0, 1)
-  pop
-  }
 
 #' @details
 #' This function sets up an array of random numbers
 #' @params
 #' @return an array of random numbers for each event, person and time cycle
 generate_random <- function() {
-  events <- c("PROBS", "SYMPT", "Death_BC", "Screen_UPTK","Diag_UPTK")
+  events <- c("PROBS", "Smoke_quit", "BCLG_recurrence", "SYMPT_HG", "SYMPT_LG","Death_BC", "Screen_UPTK","Diag_UPTK")
   array(runif(n.i * length(events) * n.t), dim = c(n.i, length(events), n.t), dimnames = list(NULL, events, NULL))
 } 

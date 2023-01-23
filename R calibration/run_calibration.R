@@ -22,15 +22,16 @@ set.seed(10)
 ##################################################################################
 
 ###Set up the Global Parameters
-run_mode <- "Calibration" # Available modes include "Testing" (returns all matrices), "Calibration_rand" (m.Diag and TR), "Calibration_Bayes" (m.Diag and TR),"Deterministic" (m.Out only), "PSA" (m.Out only)
+run_mode <- "PSA" # Available modes include "Testing" (returns all matrices), "Calibration_rand" (m.Diag and TR), "Calibration_Bayes" (m.Diag and TR),"Deterministic" (m.Out only), "PSA" (m.Out only)
+calibration_type = "Bayes" #also can be Random
 cohort <- 1 # 1 = all individuals start model at same age (cohort), 0 = individuals start in model at true (HSE) age
 cohort_age <- 30 #select starting age of cohort (hash out or set to anything if not using cohort)
-n.loops <- 1 # The number of model loops/PSA loops to run 
+n.loops <- 3 # The number of model loops/PSA loops to run 
 cl <- 1  # The cycle length (years) 
 n.t   <- if(cohort==1){100-cohort_age}else{70}  # The number of cycles to run 
 d.c <- 0.035 # The discount rate for costs
 d.e <- 0.035 # The discount rate for effects
-N_sets <- if(run_mode =="PSA" | run_mode =="Calibration_Bayes" ){n.loops}else{1} #Number of parameter sets required (for PSA). Minimum value = 1 (mean parameter values); maximum value = 1651 (number of calibrated correlated param sets)
+N_sets <- if(calibration_type =="Bayes" ){n.loops}else{1} #Number of parameter sets required (for PSA). Minimum value = 1 (mean parameter values); maximum value = 1651 (number of calibrated correlated param sets)
 
 ###Load up all the functions and all the data for use in the model
 source("Load_all_files.R")
@@ -41,7 +42,8 @@ source("Load_all_files.R")
 # Load the calibration inputs
 # Read all functions from all scripts within the R calibration folder
 
-sapply(list.files("R calibration/R",full.names=T), source)
+#sapply(list.files("R calibration/R",full.names=T), source)
+source("R calibration/R/func_calibration.R")
 
 # Calculate the size of the cohorts 
 Cohort_m <- sum(population[,"sex"]==1)
@@ -68,7 +70,7 @@ f.plot.target(Targets, CI_targets)
 # Define parameters to calibrate
 Calibr_parameters <- Params[c("P.onset", "P.onset_low.risk", "P.onset_age", "RR.onset_sex", "P.sympt.diag_LGBC", "P.sympt.diag_A_HGBC",
                               "P.sympt.diag_B_HGBC", "P.sympt.diag_Age80_HGBC", "C.age.80.undiag.mort",
-                               "shape.t.StI.StII", "shape.t.StII.StIII", "shape.t.StIII.StIV") ,]
+                               "shape.t.StI.StII", "shape.t.StII.StIII", "shape.t.StIII.StIV", "P.LGtoHGBC") ,]
 v.param_names <- rownames(Calibr_parameters) # number of parameters to calibrate 
 n_params <- length(v.param_names)
 
