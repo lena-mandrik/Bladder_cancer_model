@@ -6,11 +6,11 @@
 
 
 # Load starting parameters and set up the step
-
-f.load.start.param <- function(Calibr_parameters){
+#
+f.load.start.param <- function(fitted_params, Calibr_parameters){
   
   # Load the calibrated parameters from the random calibration
-  fitted_params <- (read.table("R calibration/Outputs/parameters_fit.txt", header = F, row.names=1)) #exclude the parameter on RR death for no smokers, as it was calculated
+  #fitted_params <- (read.table("R calibration/Outputs/parameters_fit.txt", header = F, row.names=1)) #exclude the parameter on RR death for no smokers, as it was calculated
   Calibr_parameters[1:nrow(fitted_params),1] <- fitted_params[,1]
   
   # Add the step to the matrix
@@ -25,6 +25,9 @@ f.load.start.param <- function(Calibr_parameters){
   
   Calibr_parameters["P.onset_low.risk", "Param1"]=((1-Calibr_parameters["P.onset_low.risk", "Mean"])/(0.01^2)^2 -1/Calibr_parameters["P.onset_low.risk", "Mean"])*Calibr_parameters["P.onset_low.risk", "Mean"]^2
   Calibr_parameters["P.onset_low.risk", "Param2"]=Calibr_parameters["P.onset_low.risk", "Param1"]*(1/Calibr_parameters["P.onset_low.risk", "Mean"]-1)
+  
+  Calibr_parameters["P.LGtoHGBC", "Param1"]=((1-Calibr_parameters["P.LGtoHGBC", "Mean"])/(0.01^2)^2 -1/Calibr_parameters["P.LGtoHGBC", "Mean"])*Calibr_parameters["P.LGtoHGBC", "Mean"]^2
+  Calibr_parameters["P.LGtoHGBC", "Param2"]=Calibr_parameters["P.LGtoHGBC", "Param1"]*(1/Calibr_parameters["P.LGtoHGBC", "Mean"]-1)
   
   return(Calibr_parameters)
 }

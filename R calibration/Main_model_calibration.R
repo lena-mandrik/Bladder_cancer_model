@@ -32,7 +32,6 @@ if(calibration_type =="Bayes"){
   Params["P.sympt.diag_A_HGBC",3:4] <- Calibr_parameters["P.sympt.diag_A_HGBC",3:4]
   Params["P.sympt.diag_B_HGBC",3:4] <- Calibr_parameters["P.sympt.diag_B_HGBC",3:4]
   Params["P.sympt.diag_Age80_HGBC",3:4] <- Calibr_parameters["P.sympt.diag_Age80_HGBC",3:4]
-  Params["C.age.80.undiag.mort",3:4] <- Calibr_parameters["C.age.80.undiag.mort",3:4]
   Params["shape.t.StI.StII",3:4] <- Calibr_parameters["shape.t.StI.StII",3:4]
   Params["shape.t.StII.StIII",3:4] <- Calibr_parameters["shape.t.StII.StIII",3:4]
   Params["shape.t.StIII.StIV",3:4] <- Calibr_parameters["shape.t.StIII.StIV",3:4]
@@ -42,10 +41,6 @@ if(calibration_type =="Bayes"){
   
 }
 
-######################
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-# check what is wrong with the beta function
 
 
 
@@ -59,7 +54,7 @@ results_no_screen = foreach::foreach(iterator = 1:n.loops, .options.RNG = optsN)
   }
   
 #Select appropriate parameter set to use
-p.set <- ifelse(calibration_type =="Bayes", i, 1)
+p.set <- ifelse(calibration_type =="Bayes", iterator, 1)
 
 #Set up the model parameters according to current parameter set
 f.set_parameters(p.set)

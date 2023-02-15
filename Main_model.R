@@ -18,12 +18,11 @@ library("doRNG")
 ###Set random seed
 set.seed(10)
 
-
 ###Set up the Global Parameters
 run_mode <- "Calibration" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag and TR), "Deterministic" (m.Out only), "PSA" (m.Out only)
 cohort <- 1 # 1 = all individuals start model at same age (cohort), 0 = individuals start in model at true (HSE) age
 cohort_age <- 30 #select starting age of cohort (hash out or set to anything if not using cohort)
-n.loops <- 200 # The number of model loops/PSA loops to run 
+n.loops <- 2 # The number of model loops/PSA loops to run 
 cl <- 1  # The cycle length (years) 
 n.t   <- if(cohort==1){100-cohort_age}else{70}  # The number of cycles to run 
 d.c <- 0.035 # The discount rate for costs
@@ -33,36 +32,28 @@ N_sets <- if(run_mode =="PSA"){n.loops}else{1} #Number of parameter sets require
 ###Load up all the functions and all the data for use in the model
 source("Load_all_files.R")
 
-
 ###Load up all the functions and all the data for use in the model
 ###Set up results collection
 results_no_screen <- list()
 
-# Random numbers:
-optsN <- list(123, normal.kind = "Ahrens")
+  # Random numbers:
+  optsN <- list(123, normal.kind = "Ahrens")
+  
+  # Linux or Windows code to forking or parallel execution:
+  if(f.get_os() == "windows") {
+    n_cores <- (detectCores()-2)
+    cluster = makeCluster(n_cores, type = "PSOCK", outfile = "")  # Windows - WM
+    registerDoParallel(cluster) # Windows- WM
+    #registerDoRNG(1234, once = FALSE) # Windows- WM
+  } else {
+    #doMC::registerDoMC(10) # Linux - WM. Random number issues
+    cluster = makeCluster(10, type = "FORK", outfile = "")  # Linux - WM
+    registerDoParallel(cluster) # Linux- WM
+    #registerDoRNG(1234, once = FALSE) # Linux- WM
+    # Progress bar:
+    pb = txtProgressBar(min = 1, max = n.loops, style = 3) # Linux- WM
+  }
 
-# Linux or Windows code to forking or parallel execution:
-if(f.get_os() == "windows") {
-  n_cores <- (detectCores()-2)
-  cluster = makeCluster(n_cores, type = "PSOCK", outfile = "")  # Windows - WM
-  registerDoParallel(cluster) # Windows- WM
-  #registerDoRNG(1234, once = FALSE) # Windows- WM
-} else {
-  #doMC::registerDoMC(10) # Linux - WM. Random number issues
-  cluster = makeCluster(10, type = "FORK", outfile = "")  # Linux - WM
-  registerDoParallel(cluster) # Linux- WM
-  #registerDoRNG(1234, once = FALSE) # Linux- WM
-  # Progress bar:
-  pb = txtProgressBar(min = 1, max = n.loops, style = 3) # Linux- WM
-}
-
-mult.smoke=mult.past.smoke=1
-
-# Loop for risk calibration
-repeat{
-
-mult.smoke= mult.smoke+0.05
-mult.past.smoke= mult.past.smoke+0.01
 
 ### run the model:
 results_no_screen = foreach::foreach(iterator = 1:n.loops, .options.RNG = optsN) %dorng% {
@@ -101,13 +92,4 @@ if(f.get_os() == "windows") {
   stopCluster(cluster)
 }
 
-risk <- f.risk.calibration(results_no_screen)
-RR.past_smoke <- 2.0400
-RR.current_smoke <- 3.4700
 
-if(risk[2] >RR.past_smoke & risk[1] > RR.current_smoke){
-  print(c(mult.smoke, mult.past.smoke))
-  break
-}
-
-}
