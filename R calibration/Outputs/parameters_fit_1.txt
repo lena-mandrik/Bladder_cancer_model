@@ -1,0 +1,13 @@
+P.onset	0.000100391
+P.onset_low.risk	0.195951693
+P.onset_age	1.004514479
+P.onset_sex	1.862197648
+P.sympt.diag_LGBC	0.033216661
+P.sympt.diag_A_HGBC	0.028015973
+P.sympt.diag_B_HGBC	1.058045495
+P.sympt.diag_Age80_HGBC	0.877219055
+C.age.80.undiag.mort	-0.249189739
+RR.All.Death.no_smoke	0.787750645
+shape.t.StI.StII	1.342285512
+shape.t.StII.StIII	1.068729578
+shape.t.StIII.StIV	1.416747428

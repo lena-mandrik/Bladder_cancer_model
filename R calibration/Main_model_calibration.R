@@ -39,9 +39,8 @@ if(calibration_type =="Bayes"){
 
   Param_sets <- f.generate_parameters(Params, N_sets)
   
+
 }
-
-
 
 
 ### run the model:
@@ -71,6 +70,21 @@ if(run_mode == "Calibration" & calibration_type =="Random"){ #replace the calibr
   shape.t.StI.StII <- Calibr_parameters["shape.t.StI.StII", 1]
   shape.t.StII.StIII <- Calibr_parameters["shape.t.StII.StIII", 1]
   shape.t.StIII.StIV <- Calibr_parameters["shape.t.StIII.StIV", 1]
+
+  } else if(run_mode == "Calibration" & calibration_type =="Analyse_calibration"){
+  
+  P.onset<- fitted_params["P.onset", 1]
+  P.onset_age <- fitted_params["P.onset_age", 1]
+  P.onset_low.risk <- fitted_params["P.onset_low.risk", 1]
+  P.onset_sex <- fitted_params["RR.onset_sex", 1]
+  P.sympt.diag_LGBC <- fitted_params["P.sympt.diag_LGBC", 1]
+  P.sympt.diag_A_HGBC <- fitted_params["P.sympt.diag_A_HGBC", 1]
+  P.sympt.diag_B_HGBC <- fitted_params["P.sympt.diag_B_HGBC", 1]
+  P.sympt.diag_Age80_HGBC <- fitted_params["P.sympt.diag_Age80_HGBC", 1]
+  C.age.80.undiag.mort<- fitted_params["C.age.80.undiag.mort", 1]
+  shape.t.StI.StII <- fitted_params["shape.t.StI.StII", 1]
+  shape.t.StII.StIII <- fitted_params["shape.t.StII.StIII", 1]
+  shape.t.StIII.StIV <- fitted_params["shape.t.StIII.StIV", 1]
 }
 
 

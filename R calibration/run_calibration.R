@@ -78,13 +78,19 @@ Calibr_parameters <- Params[c("P.onset", "P.onset_low.risk", "P.onset_age", "RR.
 v.param_names <- rownames(Calibr_parameters) # number of parameters to calibrate 
 n_params <- length(v.param_names)
 
-n_samples <-2 # number of calibration runs
+n_samples <-100 # number of calibration runs
 
 # Goodness-of-fit outcomes
 m.GOF <-  matrix(nrow=n_samples, ncol = ncol(Targets)-1)
 colnames(m.GOF) <- paste0(c(v.target_names), "_fit")
 
-if(run_mode == "Calibration_rand"){
+if(calibration_type == "Random"){
   source("R calibration//R//Random//f.random.R")
   print(output)
+} else if(calibration_type == "Bayes"){
+  
+  source("R calibration//test//Bayesian//MHA_functions.R")
+  source("R calibration//test//Bayesian//MHA.R")
+  
+  
 }

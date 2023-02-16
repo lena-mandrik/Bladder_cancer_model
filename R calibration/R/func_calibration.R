@@ -6,32 +6,50 @@
 
 
 # Load starting parameters and set up the step
-#
 f.load.start.param <- function(fitted_params, Calibr_parameters){
   
-  # Load the calibrated parameters from the random calibration
-  #fitted_params <- (read.table("R calibration/Outputs/parameters_fit.txt", header = F, row.names=1)) #exclude the parameter on RR death for no smokers, as it was calculated
   Calibr_parameters[1:nrow(fitted_params),1] <- fitted_params[,1]
   
   # Add the step to the matrix
-  step_calibr <- matrix(0.3, ncol=1, nrow=nrow(Calibr_parameters))
+  step_calibr <- matrix(0.1, ncol=1, nrow=nrow(Calibr_parameters))
   names.col_param <- colnames(Calibr_parameters)
   Calibr_parameters <- cbind(Calibr_parameters, step_calibr)
   colnames(Calibr_parameters) <- c(names.col_param, "step")
   
   # Update alpha and beta for parameters with beta distribution
-  Calibr_parameters["P.onset", "Param1"]=((1-Calibr_parameters["P.onset", "Mean"])/(0.01^2)^2 -1/Calibr_parameters["P.onset", "Mean"])*Calibr_parameters["P.onset", "Mean"]^2
-  Calibr_parameters["P.onset", "Param2"]=Calibr_parameters["P.onset", "Param1"]*(1/Calibr_parameters["P.onset", "Mean"]-1)
+  #Calibr_parameters["P.onset", "Param1"]=((1-Calibr_parameters["P.onset", "Mean"])/(0.01^2)^2 -1/Calibr_parameters["P.onset", "Mean"])*Calibr_parameters["P.onset", "Mean"]^2
+  #Calibr_parameters["P.onset", "Param2"]=Calibr_parameters["P.onset", "Param1"]*(1/Calibr_parameters["P.onset", "Mean"]-1)
   
-  Calibr_parameters["P.onset_low.risk", "Param1"]=((1-Calibr_parameters["P.onset_low.risk", "Mean"])/(0.01^2)^2 -1/Calibr_parameters["P.onset_low.risk", "Mean"])*Calibr_parameters["P.onset_low.risk", "Mean"]^2
-  Calibr_parameters["P.onset_low.risk", "Param2"]=Calibr_parameters["P.onset_low.risk", "Param1"]*(1/Calibr_parameters["P.onset_low.risk", "Mean"]-1)
+  #Calibr_parameters["P.onset_low.risk", "Param1"]=((1-Calibr_parameters["P.onset_low.risk", "Mean"])/(0.01^2)^2 -1/Calibr_parameters["P.onset_low.risk", "Mean"])*Calibr_parameters["P.onset_low.risk", "Mean"]^2
+ # Calibr_parameters["P.onset_low.risk", "Param2"]=Calibr_parameters["P.onset_low.risk", "Param1"]*(1/Calibr_parameters["P.onset_low.risk", "Mean"]-1)
   
-  Calibr_parameters["P.LGtoHGBC", "Param1"]=((1-Calibr_parameters["P.LGtoHGBC", "Mean"])/(0.01^2)^2 -1/Calibr_parameters["P.LGtoHGBC", "Mean"])*Calibr_parameters["P.LGtoHGBC", "Mean"]^2
-  Calibr_parameters["P.LGtoHGBC", "Param2"]=Calibr_parameters["P.LGtoHGBC", "Param1"]*(1/Calibr_parameters["P.LGtoHGBC", "Mean"]-1)
+ # Calibr_parameters["P.LGtoHGBC", "Param1"]=((1-Calibr_parameters["P.LGtoHGBC", "Mean"])/(0.01^2)^2 -1/Calibr_parameters["P.LGtoHGBC", "Mean"])*Calibr_parameters["P.LGtoHGBC", "Mean"]^2
+ # Calibr_parameters["P.LGtoHGBC", "Param2"]=Calibr_parameters["P.LGtoHGBC", "Param1"]*(1/Calibr_parameters["P.LGtoHGBC", "Mean"]-1)
   
   return(Calibr_parameters)
 }
 
+##############################################
+# Update means in Bayes calibration
+
+
+f.undate.means <- function(params, Param_sets){
+  # Update the means
+  Calibr_parameters["P.onset","Mean"] <- mean(Param_sets[,"P.onset"])
+  Calibr_parameters["P.onset_low.risk","Mean"] <- mean(Param_sets[,"P.onset_low.risk"])
+  Calibr_parameters["P.onset_age","Mean"] <- mean(Param_sets[,"P.onset_age"])
+  Calibr_parameters["RR.onset_sex","Mean"] <- mean(Param_sets[,"RR.onset_sex"])
+  Calibr_parameters["P.sympt.diag_LGBC","Mean"] <- mean(Param_sets[,"P.sympt.diag_LGBC"])
+  Calibr_parameters["P.sympt.diag_A_HGBC","Mean"] <- mean(Param_sets[,"P.sympt.diag_A_HGBC"])
+  Calibr_parameters["P.sympt.diag_B_HGBC","Mean"] <- mean(Param_sets[,"P.sympt.diag_B_HGBC"])
+  Calibr_parameters["P.sympt.diag_Age80_HGBC","Mean"] <- mean(Param_sets[,"P.sympt.diag_Age80_HGBC"])
+  Calibr_parameters["shape.t.StI.StII","Mean"] <- mean(Param_sets[,"shape.t.StI.StII"])
+  Calibr_parameters["shape.t.StII.StIII","Mean"] <- mean(Param_sets[,"shape.t.StII.StIII"])
+  Calibr_parameters["shape.t.StIII.StIV","Mean"] <- mean(Param_sets[,"shape.t.StIII.StIV"])
+  Calibr_parameters["P.LGtoHGBC","Mean"] <- mean(Param_sets[,"P.LGtoHGBC"])
+  
+  Calibr_parameters
+}
 
 
 

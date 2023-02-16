@@ -2,18 +2,29 @@
 # Load GOF and parameters
 
 #outputs <- read.table("R calibration/Outputs/m.GOF_21.12.22.txt", header = TRUE, row.names=1)
+fitted_params <- (read.table("R calibration/Outputs/parameters_fit_1.txt", header = F, row.names=1)) 
+#fitted_params <- (read.table("R calibration/Outputs/parameters_fit_3.txt", header = F, row.names=1)) 
+
+fitted_params["P.onset_age",] <- fitted_params["P.onset_age",]*1
+#fitted_params["P.sympt.diag_Age80_HGBC",] <- 0.95
 
 # Check fitted parameters from the previous calibration
-fitted_params <- (read.table("R calibration/Outputs/parameters_fit.txt", header = F, row.names=1)) 
-Calibr_parameters[ ,1] <- fitted_params[,1]
+#fitted_params <- (read.table("R calibration/Outputs/parameters_fit_1.txt", header = F, row.names=1)) 
 
-#Calibrated_parameters <- t(outputs[outputs[ ,"Sum"] ==max(outputs[ ,"Sum"]),14:25])
+n.loops <- 50 # The number of model loops/PSA loops to run 
+cl <- 1  # The cycle length (years) 
+n.t   <- if(cohort==1){100-cohort_age}else{70}  # The number of cycles to run 
+d.c <- 0.035 # The discount rate for costs
+d.e <- 0.035 # The discount rate for effects
+N_sets <- if(calibration_type =="Bayes" ){n.loops}else{1} #Number of parameter sets required (for PSA). Minimum value = 1 (mean parameter values); maximum value = 1651 (number of calibrated correlated param sets)
 
-#Calibr_parameters[,1] <- Calibrated_parameters
+###Load up all the functions and all the data for use in the model
+source("Load_all_files.R")
 
-#TEST DELETE AFTERWARDS
 
-Calibr_parameters[3,1] <- Calibr_parameters[3,1]*1.1
+# Type of mode for analysis
+run_mode = "Calibration" 
+calibration_type ="Analyse_calibration"
 
 source("R calibration\\Main_model_calibration.R") # run the model
 
@@ -22,7 +33,6 @@ Predict <- cbind(output$rate_outcomes_m, output$rate_outcomes_f)
 
 # log likelihood instead of sum of squared errors
 #m.GOF <- f.GOF.calc(run, m.GOF, Targets, SE, Predict)
-
 
 c.names <- colnames(Predict)
 
