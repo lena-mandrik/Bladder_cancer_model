@@ -28,11 +28,15 @@ Simulate_NHD <- function(n.i, n.t, pop) {
   }
   
   #Create another matrix for current diagnostic information
-  m.Diag <- matrix(0, nrow = n.i, ncol = 18)
+  #m.Diag <- matrix(0, nrow = n.i, ncol = 18)
+  m.Diag <- matrix(0, nrow = n.i, ncol = 15)
   
   # When BC said, it means HG
-  colnames(m.Diag) <- c("HG_state", "HG_diag", "LG_state", "LG_diag",  "age_LG_diag", "HG_sympt_diag", "Screen_diag", "HG_new_diag",
-                        "HG_age_diag", "HG_stage_diag", "HG_yr_diag","LG_yr_diag", "yr_diag","HG_yr_onset", "HG_age_onset", "LG_age_onset", "HG_new_onset", "age_BC_death")
+ # colnames(m.Diag) <- c("HG_state", "HG_diag", "LG_state", "LG_diag",  "age_LG_diag", "HG_sympt_diag", "Screen_diag", "HG_new_diag",
+   #                     "HG_age_diag", "HG_stage_diag", "HG_yr_diag","LG_yr_diag", "yr_diag","HG_yr_onset", "HG_age_onset", "LG_age_onset", "HG_new_onset", "age_BC_death")
+  
+  colnames(m.Diag) <- c("HG_state", "LG_state", "BC_diag", "LG_age_diag", "HG_age_diag", "Sympt_diag", "Screen_diag", "New_diag",
+                         "HG_stage_diag", "yr_diag","HG_yr_onset", "HG_age_onset", "LG_age_onset", "HG_new_onset", "age_BC_death")
   
   # Create an array to gather screening and surveillance information for each cycle
   m.Screen <- array(data = 0, dim = c(n.i, n.t + 1, length(screen_names)))
@@ -58,29 +62,29 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     # 1- no cancer, 2- LG cancer, 3 -HG cancer, 4 - mortality
     
     # Record the characteristics of onset for HG cancer
-    m.Diag[, "HG_new_onset"] <- ifelse(m.M[, t+1] == 3 & m.M[, t] != 3, 1, 0)
+    m.Diag[, "HG_new_onset"] <- ifelse(m.M[, t+1] == 3 & m.M[, t] != 3, 1, 0) #Only high-grade cancers
     m.Diag[, "HG_yr_onset"][m.Diag[, "HG_yr_onset"] >=1] <- m.Diag[, "HG_yr_onset"][m.Diag[, "HG_yr_onset"] >=1] +1 #Update the year of onset if the cancer developed the previous years
     m.Diag[, "HG_yr_onset"] <- m.Diag[, "HG_yr_onset"] + m.Diag[, "HG_new_onset"]
     
-    #Mark those individuals who just had BC onset
+    # Mark those individuals who just had BC onset
     m.Diag[, "HG_age_onset"] <- m.Diag[, "HG_age_onset"] + (pop[, "age"] * m.Diag[, "HG_new_onset"])  
     
     # Mark in m.Diag all persons with BC (independently on diagnosis)
     m.Diag[, "HG_state"][which(m.Diag[ ,"HG_yr_onset"] >0)] <- 1
     
-    # Record the characteristics of onset for LG cancer
-    m.Diag[, "LG_state"][which(m.M[ ,t+1]==2 & m.M[ ,t]==1)] <- 1
-    
-    #Mark age of those individuals who just had LG onset
+    # Mark age of those individuals who just had LG onset
     new_LG <- m.M[ ,t+1]==2 & m.M[ ,t]==1
+    
+    # Record the characteristics of onset for LG cancer
+    m.Diag[, "LG_state"][which(new_LG)] <- 1
     m.Diag[, "LG_age_onset"] <- m.Diag[, "LG_age_onset"] + (pop[, "age"] * new_LG) 
 
     # Update m.M_8s matrix with the states for those who have HG cancer
     m.M_8s[, t+1] <- m.M[, t+1]
     m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t] ==8, 8) #Replace with BC death those who died with BC before this cycle
-    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage2"]==m.Diag[,"HG_yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==5)) & m.Diag[, "HG_yr_diag"] ==0, 5) #Replace for stage 2
-    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage3"]==m.Diag[,"HG_yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==6)) & m.Diag[, "HG_yr_diag"] ==0, 6) #Replace for stage 3
-    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage4"]==m.Diag[,"HG_yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==7)) & m.Diag[, "HG_yr_diag"] ==0, 7) #Replace for stage 4
+    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage2"]==m.Diag[,"HG_yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==5)) & m.Diag[, "yr_diag"] ==0, 5) #Replace for stage 2
+    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage3"]==m.Diag[,"HG_yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==6)) & m.Diag[, "yr_diag"] ==0, 6) #Replace for stage 3
+    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & m.BC.T.to.Stage[ ,"T.onsetToStage4"]==m.Diag[,"HG_yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==7)) & m.Diag[, "yr_diag"] ==0, 7) #Replace for stage 4
     
     # replace with the stage for those who were diagnosed assuming that they don't progress
     m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "HG_stage_diag"]==2 & m.M[, t+1] != 4, 5) #replace the stage at diagnosis for those who were diagnosed
@@ -113,10 +117,12 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     m.M[, t+1] <- replace(m.M[, t+1], m.M_8s[, t+1]==8, 4)
     
     # Update the QALYs and costs (not half cycle corrected)
-   m.E[, t+1] <- calc.utility(m.State, m.Diag, pop, t) # Assess effects per individual during the cycle t+1 
-   m.C[, t+1] <- calc.cost(m.State, m.Diag, m.Cost.treat) # Assess CRC treatment costs per individual during the cycle t+1 (note not half cycle corrected) 
+    m.E[, t+1] <- calc.utility(m.State, m.Diag, pop, t) # Assess effects per individual during the cycle t+1 
+    m.C[, t+1] <- calc.cost(m.State, m.Diag, m.Cost.treat) # Assess CRC treatment costs per individual during the cycle t+1 (note not half cycle corrected) 
     
-
+    # Gather outcomes for cycle t (total and subgroups)
+    m.Out <- aggregate.outcomes(m.Out, m.M, m.E, m.C, m.Diag, m.Screen, m.State, pop, t)
+   
     # Update the age for only those individuals who are alive
     IND <- m.M[, t+1] != 4
     pop[IND, "age"] <- pop[IND,"age"] +1 # update the age

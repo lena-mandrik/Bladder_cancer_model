@@ -100,12 +100,11 @@ f.set_parameters <- function(p.set) {
                    Param_sets[p.set, "Cost.dipstick"]), ncol=1)
   
   DS_names <-rownames(m.Cost.screen) <- c("Invite_DS","Respond_DS", "Positive_DS")
-
+  
   # Create matrix summarising the screening process
   screen_names <- c("Invite_DS","Respond_DS", "Positive_DS", "Invite_FC", "Diagnostic_FC", "TURBT_FS",
-                    "Invite_Surv_FC", "Diagnostic_Surv_FC", "TURBT_FC_Surv", "Next_Surv", 
-                    "Die_TURBT", "HG_BC", "LG_BC")
-  
+                    "Next_Surv", 
+                    "Die_TURBT", "HG_BC", "LG_BC", "FP", "FN")
 
   # Set treatment and surveillance costs
   # Create Cost matrices 

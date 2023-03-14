@@ -19,6 +19,7 @@ calc.cost <- function(m.State, m.Diag, m.Cost.treat){
   #Add costs of diagnosis depending on whether screen- or symptomatic diagnosed
   v.cost.diag <- ifelse(m.Diag[, "Screen_diag"]==1 & m.Diag[, "yr_diag"]==1, Cost.diag.screen, Cost.diag.sympt)
   v.cost[which(m.Diag[, "yr_diag"]==1)] <- v.cost[which(m.Diag[, "yr_diag"]==1)]+v.cost.diag
+  v.cost
 }
 
 # !!! currently the impact on costs of smoking and no smoking is not implemented
@@ -40,9 +41,9 @@ calc.utility <- function(m.State, m.Diag, pop, t) {
   v.utility <- pop[, "EQ5D"] - (Utility.age * (pop[, "age"] - pop[, "age_0"]))
   
   # Mark those individuals with the diagnosed disease
-  LG_u <- (m.Diag[, "LG_yr_diag"] >0 & m.Diag[, "LG_yr_diag"] <3)*1 # Impact on utilities for LG cancers is during 3 years
-  HG_1.3_u <- (m.Diag[, "HG_yr_diag"] >0 & m.Diag[, "HG_yr_diag"] <5 & (m.State[,"St1_HG"] ==1 |m.State[,"St2_HG"] ==1 | m.State[,"St3_HG"] ==1))*1 # Impact on utilities for HG cancers is during 5 years
-  HG_4_u <- (m.Diag[, "HG_yr_diag"] >0 & m.Diag[, "HG_yr_diag"] <5 & m.State[,"St4_HG"] ==1)*1 # Impact on utilities for HG cancers is during 5 years
+  LG_u <- (m.Diag[, "yr_diag"] >0 & m.Diag[, "yr_diag"] <3 & m.Diag[, "HG_stage_diag"]==0)*1 # Impact on utilities for LG cancers is during 3 years
+  HG_1.3_u <- (m.Diag[, "yr_diag"] >0 & m.Diag[, "yr_diag"] <5 & (m.State[,"St1_HG"] ==1 |m.State[,"St2_HG"] ==1 | m.State[,"St3_HG"] ==1))*1 # Impact on utilities for HG cancers is during 5 years
+  HG_4_u <- (m.Diag[, "yr_diag"] >0 & m.Diag[, "yr_diag"] <5 & m.State[,"St4_HG"] ==1)*1 # Impact on utilities for HG cancers is during 5 years
   
   # Assign disutility for each diagnosed state
   disutility_BC <- LG_u*Disutility.LG + HG_1.3_u*Disutility.HG.St1.3 + HG_4_u*Disutility.HG.St4
@@ -98,46 +99,42 @@ aggregate.outcomes <- function(m.Out, m.M, m.E, m.C, m.Diag, m.Screen, m.State, 
   m.Out["LYS", t+1] <- sum(0.5 * ((m.M[, t] < 4) + (m.M[, t+1] < 4)) * pop[, "weighting"]) # total weighted LYs
   
   #weighted cancer diagnoses and mortality
-  m.Out["LG_SYMPT", t+1] <- sum((m.Diag[, "new_diag"] ==1 & m.Diag[, "sympt_diag"] ==1 & m.Diag[, "stage_diag"] ==1) * pop[, "weighting"]) 
-  m.Out["HG_St1_SYMPT", t+1] <- sum((m.Diag[, "new_diag"] ==1 & m.Diag[, "sympt_diag"] ==1 & m.Diag[, "stage_diag"] ==1) * pop[, "weighting"]) 
-  m.Out["HG_St2_SYMPT", t+1] <- sum((m.Diag[, "new_diag"] ==1 & m.Diag[, "sympt_diag"] ==1 & m.Diag[, "stage_diag"] ==2) * pop[, "weighting"]) 
-  m.Out["HG_St3_SYMPT", t+1] <- sum((m.Diag[, "new_diag"] ==1 & m.Diag[, "sympt_diag"] ==1 & m.Diag[, "stage_diag"] ==3) * pop[, "weighting"]) 
-  m.Out["HG_St4_SYMPT", t+1] <- sum((m.Diag[, "new_diag"] ==1 & m.Diag[, "sympt_diag"] ==1 & m.Diag[, "stage_diag"] ==4) * pop[, "weighting"]) 
-  m.Out["LG_SCRN", t+1] <- sum((m.Diag[, "new_diag"] ==1 & m.Diag[, "surv_diag"] ==1 & m.Diag[, "stage_diag"] ==1) * pop[, "weighting"]) 
-  m.Out["HG_St1_SCRN", t+1] <- sum((m.Diag[, "new_diag"] ==1 & m.Diag[, "screen_diag"] ==1 & m.Diag[, "stage_diag"] ==1) * pop[, "weighting"]) 
-  m.Out["HG_St2_SCRN", t+1] <- sum((m.Diag[, "new_diag"] ==1 & m.Diag[, "screen_diag"] ==1 & m.Diag[, "stage_diag"] ==2) * pop[, "weighting"]) 
-  m.Out["HG_St3_SCRN", t+1] <- sum((m.Diag[, "new_diag"] ==1 & m.Diag[, "screen_diag"] ==1 & m.Diag[, "stage_diag"] ==3) * pop[, "weighting"]) 
-  m.Out["HG_St4_SCRN", t+1] <- sum((m.Diag[, "new_diag"] ==1 & m.Diag[, "screen_diag"] ==1 & m.Diag[, "stage_diag"] ==4) * pop[, "weighting"]) 
-  #m.Out["CRC_B_SURV", t+1] <- sum((m.Diag[, "new_diag"] ==1 & m.Diag[, "surv_diag"] ==1 & m.Diag[, "stage_diag"] ==2) * pop[, "weighting"]) 
-  #m.Out["CRC_C_SURV", t+1] <- sum((m.Diag[, "new_diag"] ==1 & m.Diag[, "surv_diag"] ==1 & m.Diag[, "stage_diag"] ==3) * pop[, "weighting"]) 
-  #m.Out["CRC_D_SURV", t+1] <- sum((m.Diag[, "new_diag"] ==1 & m.Diag[, "surv_diag"] ==1 & m.Diag[, "stage_diag"] ==4) * pop[, "weighting"]) 
-  #m.Out["CRC_A_INT", t+1] <- sum((m.Diag[, "new_diag"] ==1 & m.Diag[, "interval_diag"] ==1 & m.Diag[, "stage_diag"] ==1) * pop[, "weighting"]) 
-  #m.Out["CRC_B_INT", t+1] <- sum((m.Diag[, "new_diag"] ==1 & m.Diag[, "interval_diag"] ==1 & m.Diag[, "stage_diag"] ==2) * pop[, "weighting"]) 
-  #m.Out["CRC_C_INT", t+1] <- sum((m.Diag[, "new_diag"] ==1 & m.Diag[, "interval_diag"] ==1 & m.Diag[, "stage_diag"] ==3) * pop[, "weighting"]) 
-  #m.Out["CRC_D_INT", t+1] <- sum((m.Diag[, "new_diag"] ==1 & m.Diag[, "interval_diag"] ==1 & m.Diag[, "stage_diag"] ==4) * pop[, "weighting"]) 
-  m.Out["CRC_A_MORT", t+1] <- sum((m.M[, t+1] ==8 & m.M[, t] <8 & m.Diag[, "stage_diag"] ==1) * pop[, "weighting"]) 
-  m.Out["CRC_B_MORT", t+1] <- sum((m.M[, t+1] ==8 & m.M[, t] <8 & m.Diag[, "stage_diag"] ==2) * pop[, "weighting"]) 
-  m.Out["CRC_C_MORT", t+1] <- sum((m.M[, t+1] ==8 & m.M[, t] <8 & m.Diag[, "stage_diag"] ==3) * pop[, "weighting"]) 
-  m.Out["CRC_D_MORT", t+1] <- sum((m.M[, t+1] ==8 & m.M[, t] <8 & m.Diag[, "stage_diag"] ==4) * pop[, "weighting"])
+  m.Out["LG_SYMPT", t+1] <- sum((m.Diag[, "New_diag"] ==1 & m.Diag[, "Sympt_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==0) * pop[, "weighting"]) 
+  m.Out["HG_St1_SYMPT", t+1] <- sum((m.Diag[, "New_diag"] ==1 & m.Diag[, "Sympt_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==1) * pop[, "weighting"]) 
+  m.Out["HG_St2_SYMPT", t+1] <- sum((m.Diag[, "New_diag"] ==1 & m.Diag[, "Sympt_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==2) * pop[, "weighting"]) 
+  m.Out["HG_St3_SYMPT", t+1] <- sum((m.Diag[, "New_diag"] ==1 & m.Diag[, "Sympt_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==3) * pop[, "weighting"]) 
+  m.Out["HG_St4_SYMPT", t+1] <- sum((m.Diag[, "New_diag"] ==1 & m.Diag[, "Sympt_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==4) * pop[, "weighting"])
   
-  #weighted counts of harms
-  m.Out["HARM_BLEED", t+1] <- sum((m.Screen[, t+1, "Bleed_FS"] + m.Screen[, t+1, "Bleed_Colon"]) * pop[, "weighting"]) 
-  m.Out["HARM_PERF", t+1] <- sum((m.Screen[, t+1, "Perf_FS"] + m.Screen[, t+1, "Perf_Colon"] + m.Screen[, t+1, "Perf_CTC"]) * pop[, "weighting"])
-  m.Out["HARM_MORT", t+1] <- sum((m.Screen[, t+1, "Die_FS"] + m.Screen[, t+1, "Die_Colon"] + m.Screen[, t+1, "Die_CTC"]) * pop[, "weighting"])
+  m.Out["LG_SCRN", t+1] <- sum((m.Diag[, "New_diag"] ==1 & m.Diag[, "Screen_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==0) * pop[, "weighting"]) 
+  m.Out["HG_St1_SCRN", t+1] <- sum((m.Diag[, "New_diag"] ==1 & m.Diag[, "Screen_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==1) * pop[, "weighting"]) 
+  m.Out["HG_St2_SCRN", t+1] <- sum((m.Diag[, "New_diag"] ==1 & m.Diag[, "Screen_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==2) * pop[, "weighting"]) 
+  m.Out["HG_St3_SCRN", t+1] <- sum((m.Diag[, "New_diag"] ==1 & m.Diag[, "Screen_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==3) * pop[, "weighting"]) 
+  m.Out["HG_St4_SCRN", t+1] <- sum((m.Diag[, "New_diag"] ==1 & m.Diag[, "Screen_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==4) * pop[, "weighting"]) 
+ 
+  m.Out["HG_St1_MORT", t+1] <- sum((m.M_8s[, t+1] ==8 & m.M_8s[, t] <8 & m.Diag[, "HG_stage_diag"] ==1) * pop[, "weighting"]) 
+  m.Out["HG_St2_MORT", t+1] <- sum((m.M_8s[, t+1] ==8 & m.M_8s[, t] <8 & m.Diag[, "HG_stage_diag"] ==2) * pop[, "weighting"]) 
+  m.Out["HG_St3_MORT", t+1] <- sum((m.M_8s[, t+1] ==8 & m.M_8s[, t] <8 & m.Diag[, "HG_stage_diag"] ==3) * pop[, "weighting"]) 
+  m.Out["HG_St4_MORT", t+1] <- sum((m.M_8s[, t+1] ==8 & m.M_8s[, t] <8 & m.Diag[, "HG_stage_diag"] ==4) * pop[, "weighting"])
+  
+  #weighted counts of harms. Add mortality because of TURBT
+  m.Out["Die_TURBT", t+1] <- sum((m.Screen[, t+1, "Die_TURBT"]) * pop[, "weighting"])
   
   #weighted resource use
-  m.Out["FS_USE", t+1] <- sum((m.Screen[, t+1, "Diagnostic_FS"] + m.Screen[, t+1, "Therapeutic_FS"]) * pop[, "weighting"]) # total number of FS usage
-  m.Out["FIT_INVITE", t+1] <- sum(m.Screen[, t+1, "Invite_FIT"] * pop[, "weighting"]) # total number of FIT invites sent
-  m.Out["FIT_RESPOND", t+1] <- sum(m.Screen[, t+1, "Respond_FIT"] * pop[, "weighting"]) # total number of FIT responders
-  m.Out["SCREEN_COL_USE", t+1] <- sum((m.Screen[, t+1, "Diagnostic_Scrn_Col"] + m.Screen[, t+1, "Therapeutic_Scrn_Col"]) * pop[, "weighting"]) # total number of screening colonoscopies used
-  m.Out["SURV_COL_USE", t+1] <- sum((m.Screen[, t+1, "Diagnostic_Surv_Col"] + m.Screen[, t+1, "Therapeutic_Surv_Col"]) * pop[, "weighting"]) # total number of surveillance colonoscopies used
-  m.Out["CTC_USE", t+1] <- sum(m.Screen[, t+1, "Attend_CTC"] * pop[, "weighting"]) # total number of CTCs used
+  m.Out["Invite_DS", t+1] <- sum(m.Screen[, t+1, "Invite_DS"] * pop[, "weighting"]) # total number of dipstick kits sent
+  m.Out["Respond_DS", t+1] <- sum(m.Screen[, t+1, "Respond_DS"] * pop[, "weighting"]) # total number of dipstick kits responders
+  m.Out["Positive_DS", t+1] <- sum((m.Screen[, t+1, "Positive_DS"]) * pop[, "weighting"]) # total number of positive dipstick 
+  m.Out["Invite_FC", t+1] <- sum((m.Screen[, t+1, "Invite_FC"]) * pop[, "weighting"]) # total number of follow up CF that were tested
+  m.Out["Diagnostic_FC", t+1] <- sum((m.Screen[, t+1, "Diagnostic_FC"]) * pop[, "weighting"]) # total number of follow up CF that were tested
+  m.Out["TURBT_FS", t+1] <- sum((m.Screen[, t+1, "TURBT_FS"]) * pop[, "weighting"]) # total number of follow up CF that were tested
+  
+  m.Out["FP", t+1] <- sum(m.Screen[, t+1, "FP"] * pop[, "weighting"]) # total number of CTCs used
+  m.Out["FN", t+1] <- sum(m.Screen[, t+1, "FN"] * pop[, "weighting"]) # total number of CTCs used
   
   #calculate results per person at model start
   m.Out[, t+1] <- m.Out[, t+1] / sum(pop[, "weighting"])
   
   #Apply discounting to costs, QALYs and Life Years
-  costs <- c("TOTAL_COSTS", "CRC_COSTS", "FIT_COSTS", "FS_COSTS", "CTC_COSTS", "SCREEN_COL_COSTS", "SURV_COSTS", "HARM_COSTS")
+  costs <- c("TOTAL_COSTS", "BC_COSTS", "SCREEN_COSTS")
   m.Out[costs, t+1] <- m.Out[costs, t+1] * c(rep(v.dwc[t+1], length(costs)))
   m.Out["QALYS", t+1] <- m.Out["QALYS", t+1] * v.dwe[t+1]
   m.Out["LYS", t+1] <- m.Out["LYS", t+1] * v.dwe[t+1]
