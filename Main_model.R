@@ -19,7 +19,7 @@ library("doRNG")
 set.seed(10)
 
 ###Set up the Global Parameters
-run_mode <- "Calibration" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag and TR), "Deterministic" (m.Out only), "PSA" (m.Out only)
+run_mode <- "Deterministic" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag and TR), "Deterministic" (m.Out only), "PSA" (m.Out only)
 cohort <- 1 # 1 = all individuals start model at same age (cohort), 0 = individuals start in model at true (HSE) age
 cohort_age <- 30 #select starting age of cohort (hash out or set to anything if not using cohort)
 n.loops <- 2 # The number of model loops/PSA loops to run 
@@ -78,7 +78,7 @@ m.BC.T.to.Stage <- f.stage(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII,
 pop <- f.risk.calc(population) 
 
 #Set up random number array for each individual
-m.Rand <- generate_random()
+m.Rand <- f.generate_random()
 
 Simulate_NHD(n.i, n.t, pop)
 

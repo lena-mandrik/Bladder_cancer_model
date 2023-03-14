@@ -45,12 +45,113 @@ f.stage <- function(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.
 #' 
 f.set_parameters <- function(p.set) {
   
-  for(i in 1:length(Param.names)){
+  for(i in 1:24){ #length(Param.names) for NHD parameters
     
     vector.Param <- Param_sets[p.set, i]
     names(vector.Param) <- c(Param.names[i])
     
     assign(names(vector.Param), value =vector.Param, envir = .GlobalEnv)
+  }
+  
+  #Set the parameters for Dipstick uptake
+  coef_DT_Uptk <- c(Param_sets[p.set, "DT.UPTK.CONS"],
+                     Param_sets[p.set, "DT.UPTK.50"],
+                     Param_sets[p.set, "DT.UPTK.55"],
+                     Param_sets[p.set, "DT.UPTK.65"],
+                     Param_sets[p.set, "DT.UPTK.70"],
+                     Param_sets[p.set, "DT.UPTK.F"],
+                     Param_sets[p.set, "DT.UPTK.NRESP"],
+                     Param_sets[p.set, "DT.UPTK.IMD2"],
+                     Param_sets[p.set, "DT.UPTK.IMD3"],
+                     Param_sets[p.set, "DT.UPTK.IMD4"],
+                     Param_sets[p.set, "DT.UPTK.IMD5"],
+                     Param_sets[p.set, "DT.UPTK.ASIAN"])
+  
+  #Set the parameters for diagnostic uptake with screen positive
+  Diag.UPTK <- Param_sets[p.set, "Diag.UPTK"]
+  
+  #Set the parameters for tests sensitivity and False positive (from specificity)
+  test_accuracy <- c(Param_sets[p.set, "Sens.dipstick.LG"],
+                     Param_sets[p.set, "Sens.dipstick.St1"],
+                     Param_sets[p.set, "Sens.dipstick.St2.4"],
+                     Param_sets[p.set, "Spec.dipstick"],
+                     Param_sets[p.set, "Sens.cystoscopy.HG"],
+                     Param_sets[p.set, "Spec.cystoscopy.HG"],
+                     Param_sets[p.set, "Sens.cystoscopy.LG"],
+                     Param_sets[p.set, "Spec.cystoscopy.LG"])
+  
+  # Set harms: mortality due to TURBT                  
+  Mort.TURBT <- Param_sets[p.set, "Mort.TURBT"]
+  
+  # Set utility age and stage decrements
+  Utility.age <- Param_sets[p.set, "Utility.age"]
+  Disutility.HG.St1.3 <- Param_sets[p.set, "Disutility.HG.St1.3"]
+  Disutility.HG.St4 <- Param_sets[p.set, "Disutility.HG.St4"]
+  Disutility.LG <- Param_sets[p.set, "Disutility.LG"]
+  
+  # Set costs of diagnosis and screening
+  
+  Cost.diag.sympt <- Param_sets[p.set, "Cost.diag.sympt"]
+  Cost.diag.screen <- Param_sets[p.set, "Cost.diag.screen"]
+  
+  # Create Cost matrix summarising the cost parameters for each screening process
+  m.Cost.screen <- as.matrix(c(Param_sets[p.set, "Cost.ad.dipstick"],
+                   Param_sets[p.set, "Cost.dipstick.positive"],
+                   Param_sets[p.set, "Cost.dipstick"]), ncol=1)
+  
+  DS_names <-rownames(m.Cost.screen) <- c("Invite_DS","Respond_DS", "Positive_DS")
+
+  # Create matrix summarising the screening process
+  screen_names <- c("Invite_DS","Respond_DS", "Positive_DS", "Invite_FC", "Diagnostic_FC", "TURBT_FS",
+                    "Invite_Surv_FC", "Diagnostic_Surv_FC", "TURBT_FC_Surv", "Next_Surv", 
+                    "Die_TURBT", "HG_BC", "LG_BC")
+  
+
+  # Set treatment and surveillance costs
+  # Create Cost matrices 
+  m.Cost.treat <- matrix(0, nrow =n.t+1, ncol =n.s_long)
+  rownames(m.Cost.treat) <- c(0:n.t)
+  colnames(m.Cost.treat) <- states_long
+  
+  #For LG
+  m.Cost.treat["1", "BC_LG"] <- Param_sets[p.set, "Cost.treat.intercept"] + Param_sets[p.set, "Cost.treat.LG"]
+  m.Cost.treat["2", "BC_LG"] <- Param_sets[p.set, "Cost.treat.intercept"] + Param_sets[p.set, "Cost.treat.LG"]+Param_sets[p.set, "Cost.treat.Y2"]
+  m.Cost.treat["3", "BC_LG"] <- Param_sets[p.set, "Cost.treat.intercept"] + Param_sets[p.set, "Cost.treat.LG"]+Param_sets[p.set, "Cost.treat.Y3"]
+  
+  #For Stage 1
+  m.Cost.treat["1", "St1_HG"] <- Param_sets[p.set, "Cost.treat.intercept"] + Param_sets[p.set, "Cost.treat.stage1"]
+  m.Cost.treat["2", "St1_HG"] <- Param_sets[p.set, "Cost.treat.intercept"] + Param_sets[p.set, "Cost.treat.stage1"]+Param_sets[p.set, "Cost.treat.Y2"]
+  m.Cost.treat["3", "St1_HG"] <- Param_sets[p.set, "Cost.treat.intercept"] + Param_sets[p.set, "Cost.treat.stage1"]+Param_sets[p.set, "Cost.treat.Y3"]
+
+  #For Stage 2
+  m.Cost.treat["1", "St2_HG"] <- Param_sets[p.set, "Cost.treat.intercept"] + Param_sets[p.set, "Cost.treat.stage2"]
+  m.Cost.treat["2", "St2_HG"] <- Param_sets[p.set, "Cost.treat.intercept"] + Param_sets[p.set, "Cost.treat.stage2"]+Param_sets[p.set, "Cost.treat.Y2"]
+  m.Cost.treat["3", "St2_HG"] <- Param_sets[p.set, "Cost.treat.intercept"] + Param_sets[p.set, "Cost.treat.stage2"]+Param_sets[p.set, "Cost.treat.Y3"]
+  
+  #For Stage 3
+  m.Cost.treat["1", "St3_HG"] <- Param_sets[p.set, "Cost.treat.intercept"] + Param_sets[p.set, "Cost.treat.stage3"]
+  m.Cost.treat["2", "St3_HG"] <- Param_sets[p.set, "Cost.treat.intercept"] + Param_sets[p.set, "Cost.treat.stage3"]+Param_sets[p.set, "Cost.treat.Y2"]
+  m.Cost.treat["3", "St3_HG"] <- Param_sets[p.set, "Cost.treat.intercept"] + Param_sets[p.set, "Cost.treat.stage3"]+Param_sets[p.set, "Cost.treat.Y3"]
+  
+  #For Stage 4
+  m.Cost.treat["1", "St4_HG"] <- Param_sets[p.set, "Cost.treat.intercept"] + Param_sets[p.set, "Cost.treat.stage4"]
+  m.Cost.treat["2", "St4_HG"] <- Param_sets[p.set, "Cost.treat.intercept"] + Param_sets[p.set, "Cost.treat.stage4"]+Param_sets[p.set, "Cost.treat.Y2"]
+  m.Cost.treat["3", "St4_HG"] <- Param_sets[p.set, "Cost.treat.intercept"] + Param_sets[p.set, "Cost.treat.stage4"]+Param_sets[p.set, "Cost.treat.Y3"]
+  
+  #Add surveillance costs for Y4,5 for HG cancers only
+  m.Cost.treat[c("4","5"), c("St1_HG","St2_HG","St3_HG","St4_HG")] <- Param_sets[p.set, "Cost.surv.Y4.5"]
+  
+  # Set matrix for screening and diagnostic costs
+  m.scr.diag.costs <- as.matrix(c(Param_sets[p.set, "Cost.diag.sympt"],
+                                Param_sets[p.set, "Cost.diag.screen"],
+                                Param_sets[p.set, "Cost.dipstick.invite"],
+                                Param_sets[p.set, "Cost.ad.dipstick"],
+                                Param_sets[p.set, "Cost.dipstick.positive"],
+                                Param_sets[p.set, "Cost.dipstick"]))
+                                
+
+  for (variable in ls()) {
+    assign(variable, get(variable), envir = .GlobalEnv)
   }
  }
 
@@ -74,7 +175,7 @@ f.generate_parameters <- function(Params, N_sets){
     
     #Sample from distributions 1=Beta; 2=Gamma, 3=Log-normal, 4=Uniform, 5=Normal, 6=Constant
     
-    Param_sets[which(Params[, "Distribution"] ==1),1:N_sets] <- rbeta(length(Param_sets[which(Params[, "Distribution"] ==1),1])*(N_sets-1), 
+    Param_sets[which(Params[, "Distribution"] ==1),2:N_sets] <- rbeta(length(Param_sets[which(Params[, "Distribution"] ==1),1])*(N_sets-1), 
                                                                       shape1=Params[which(Params[, "Distribution"] ==1), "Param1"], 
                                                                       shape2=Params[which(Params[, "Distribution"] ==1), "Param2"])
     
@@ -97,13 +198,6 @@ f.generate_parameters <- function(Params, N_sets){
     Param_sets[which(Params[, "Distribution"] ==6),2:N_sets] <- Param_sets[which(Params[, "Distribution"] ==6),1]
     
     
-    Param_sets[which(Params[, "Distribution"] ==7),2:N_sets] <- truncnorm::rtruncnorm(length(Param_sets[which(Params[, "Distribution"] ==7),1])*(N_sets-1), 
-                                                                      a=1, 
-                                                                      b=1.7, mean = Params[which(Params[, "Distribution"] ==7), "Param1"], sd=Params[which(Params[, "Distribution"] ==7), "Param2"])
-    
-    Param_sets["C.age.80.undiag.mort",2:N_sets] <- runif(length(Param_sets["C.age.80.undiag.mort",1])*(N_sets-1), 
-                                                                      min=Params["C.age.80.undiag.mort", "Param2"], 
-                                                                      max=Params["C.age.80.undiag.mort", "Param1"])
     
   }
   
@@ -121,7 +215,7 @@ f.generate_parameters <- function(Params, N_sets){
 #' This function sets up an array of random numbers
 #' @params
 #' @return an array of random numbers for each event, person and time cycle
-generate_random <- function() {
+f.generate_random <- function() {
   events <- c("PROBS", "Smoke_quit", "BCLG_recurrence", "SYMPT_HG", "SYMPT_LG","Death_BC", "Screen_UPTK","Diag_UPTK")
   array(runif(n.i * length(events) * n.t), dim = c(n.i, length(events), n.t), dimnames = list(NULL, events, NULL))
 } 

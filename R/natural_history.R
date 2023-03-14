@@ -8,7 +8,7 @@
 #' m.State: matrix containing health states
 #' @return matrix of individualised transition probabilities for each transition
 
-calc.indiv.TPs <- function(pop){
+calc.indiv.TPs <- function(pop, m.Diag){
   
   
   # Other cause mortality transition 
@@ -23,12 +23,18 @@ calc.indiv.TPs <- function(pop){
   TP.BCLG <- TP.BC_onset*P.onset_low.risk
   TP.BCHG <- TP.BC_onset*(1-P.onset_low.risk)
   
-  TP <- cbind(TP.OC, TP.BCLG, TP.BCHG)
+  # Add individual TP for LG to HG cancer based on whether a patient has been diagnosed or not 
+  # LG cancers currently don't progress to HG cancers if they are detected unless the period of surveillance passed (2y) in which case they are considered as recurrent LG progressed to HG
+  TP.LGtoHGBC <- as.matrix(rep(0, n.i), ncol=1) 
+  TP.LGtoHGBC[,1] <- replace(TP.LGtoHGBC[,1], m.Diag[ ,"LG_diag"]==0, P.LGtoHGBC) # set probability for those who hasn't been diagnosed yet
+  TP.LGtoHGBC[,1] <- replace(TP.LGtoHGBC[,1], m.Diag[ ,"LG_diag"]==1 & (pop[,"age"]-m.Diag[ ,"age_LG_diag"])>1, P.LGtoHGBC*P.Recurrence.LR) # set probability of recurrence and progression to HG for those who were diagnosed, after 1 year of surveillance when the p is assumed to be zero
+  
+  TP <- cbind(TP.OC, TP.BCLG, TP.BCHG, TP.LGtoHGBC)
+  colnames(TP) <- c("TP.OC", "TP.BCLG", "TP.BCHG", "TP.LGtoHGBC")
   
   limit.age <- pop[,"age"] >= 100
-  TP[limit.age, c("TP.OC", "TP.BCLG", "TP.BCHG")] <- 0
-  TP[limit.age, "TP.OC"] <- 1
-  
+  TP[limit.age, c("TP.OC", "TP.BCLG", "TP.BCHG", "TP.LGtoHGBC")] <- c(1,0,0,0)
+
   TP
 }
 
@@ -44,16 +50,16 @@ calc.BCmort.TP <-function(pop, m.Diag){
   
 # Update the transitions for bladder cancer mortality 
 TP.BC.1.mort <- BC.1.mort[paste(pop[,"sex"],pop[,"age"], sep = ""), ]
-TP.BC.1.mort <- TP.BC.1.mort[cbind(seq_along(m.Diag[, "yr_diag"]+1), (m.Diag[, "yr_diag"]+1))]
+TP.BC.1.mort <- TP.BC.1.mort[cbind(seq_along(m.Diag[, "HG_yr_diag"]+1), (m.Diag[, "HG_yr_diag"]+1))]
 
 TP.BC.2.mort <- BC.2.mort[paste(pop[,"sex"],pop[,"age"], sep = ""), ]
-TP.BC.2.mort <- TP.BC.2.mort[cbind(seq_along(m.Diag[, "yr_diag"]+1), (m.Diag[, "yr_diag"]+1))]
+TP.BC.2.mort <- TP.BC.2.mort[cbind(seq_along(m.Diag[, "HG_yr_diag"]+1), (m.Diag[, "HG_yr_diag"]+1))]
 
 TP.BC.3.mort <- BC.3.mort[paste(pop[,"sex"],pop[,"age"], sep = ""), ]
-TP.BC.3.mort <- TP.BC.3.mort[cbind(seq_along(m.Diag[, "yr_diag"]+1), (m.Diag[, "yr_diag"]+1))]
+TP.BC.3.mort <- TP.BC.3.mort[cbind(seq_along(m.Diag[, "HG_yr_diag"]+1), (m.Diag[, "HG_yr_diag"]+1))]
 
 TP.BC.4.mort <- BC.4.mort[paste(pop[,"sex"],pop[,"age"], sep = ""), ]
-TP.BC.4.mort <- TP.BC.4.mort[cbind(seq_along(m.Diag[, "yr_diag"]+1), (m.Diag[, "yr_diag"]+1))]
+TP.BC.4.mort <- TP.BC.4.mort[cbind(seq_along(m.Diag[, "HG_yr_diag"]+1), (m.Diag[, "HG_yr_diag"]+1))]
 
 TP_mort <- cbind(TP.BC.1.mort, TP.BC.2.mort, TP.BC.3.mort, TP.BC.4.mort)
 
@@ -84,7 +90,7 @@ Probs <- function(m.M, TP) {
   a.p.it[, 1,]  <- matrix(nrow = n.i, ncol = n.s, c(1 - TP[, "TP.BCLG"]- TP[, "TP.BCHG"] - TP[, "TP.OC"], TP[, "TP.BCLG"], TP[, "TP.BCHG"], TP[, "TP.OC"]))
   # Transition probabilities in the state No cancer (STATE 1)
   
-  a.p.it[, 2,]  <- matrix(nrow = n.i, ncol = n.s, c(rep(0, n.i), 1 - rep(P.LGtoHGBC, n.i) - TP[, "TP.OC"], rep(P.LGtoHGBC, n.i), TP[, "TP.OC"]))
+  a.p.it[, 2,]  <- matrix(nrow = n.i, ncol = n.s, c(rep(0, n.i), 1 - TP[, "TP.LGtoHGBC"] - TP[, "TP.OC"], TP[, "TP.LGtoHGBC"], TP[, "TP.OC"]))
   # Transition probabilities in the state low grade bladder cancer (STATE 2)
   
   a.p.it[, 3,]   <- matrix(nrow = n.i, ncol = n.s, c(rep(0,n.i*2), 1 - TP[, "TP.OC"], TP[, "TP.OC"]))     

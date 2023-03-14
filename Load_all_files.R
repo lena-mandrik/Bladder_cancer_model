@@ -46,9 +46,7 @@ BC.4.mort <- cbind(BC.mort1, as.matrix(S4), BC.mort2)
 colnames(BC.1.mort) <- colnames(BC.2.mort) <- colnames(BC.3.mort) <- colnames(BC.4.mort) <- c(0:70)
 rownames(BC.1.mort) <- rownames(BC.2.mort) <- rownames(BC.3.mort) <- rownames(BC.4.mort) <- c(paste("0",c(30:100), sep = ""), paste("1",c(30:100), sep = ""))
 
-#Generate parameter sets for PSA, adjusted for cycle length
-Param_sets <- f.generate_parameters(Params, N_sets)
-Param.names <- colnames(Param_sets)
+
 
 #Load correlated parameter sets which are the calibrated parameters
 # Corr_param_sets <- as.matrix(read.table("data/Corr_params.txt", header = TRUE))
@@ -80,6 +78,12 @@ v.dwc <- 1 / (1 + d.c) ^ (0:n.t)   # calculate the cost discount weight based on
 v.dwe <- 1 / (1 + d.e) ^ (0:n.t)   # calculate the QALY discount weight based on the discount rate d.e
 
 #Specify outcomes
-out_names <- c("TOTAL_COSTS", "BC_COSTS", "SCREEN_COSTS", "SURV_COSTS", "HARM_COSTS", 
-               "QALYS", "LYS", "HG_St1_SYMPT", "HG_St2_SYMPT", "HG_St3_SYMPT", "HG_St4_SYMPT", "HG_St1_SCRN", "HG_St2_SCRN", 
-               "HG_St3_SCRN", "HG_St4_SCRN", "LG_SCRN", "HG_St1_MORT", "HG_St2_MORT", "HG_St3_MORT", "HG_St4_MORT", "SCREEN_INVITE", "SCREEN_RESPOND", "SCREEN_FOLLOWED")
+out_names <- c("TOTAL_COSTS", "BC_COSTS", "SCREEN_COSTS", 
+               "QALYS", "LYS", "LG_SYMPT", "HG_St1_SYMPT", "HG_St2_SYMPT", "HG_St3_SYMPT", "HG_St4_SYMPT", "LG_SCRN", "HG_St1_SCRN", "HG_St2_SCRN", 
+               "HG_St3_SCRN", "HG_St4_SCRN",  "HG_St1_MORT", "HG_St2_MORT", "HG_St3_MORT", "HG_St4_MORT", "SCREEN_INVITE", "SCREEN_RESPOND", "SCREEN_FOLLOWED")
+
+
+
+#Generate parameter sets for PSA, adjusted for cycle length
+Param_sets <- f.generate_parameters(Params, N_sets)
+Param.names <- colnames(Param_sets)
