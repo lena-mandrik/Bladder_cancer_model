@@ -34,39 +34,20 @@ source("Load_all_files.R")
 
 ###Load up all the functions and all the data for use in the model
 ###Set up results collection
-results_no_screen <- list()
+results_no_screen <- results_screen <-list()
 
-  # Random numbers:
-  optsN <- list(123, normal.kind = "Ahrens")
-  
-  # Linux or Windows code to forking or parallel execution:
-  if(f.get_os() == "windows") {
-    n_cores <- (detectCores()-2)
-    cluster = makeCluster(n_cores, type = "PSOCK", outfile = "")  # Windows - WM
-    registerDoParallel(cluster) # Windows- WM
-    #registerDoRNG(1234, once = FALSE) # Windows- WM
-  } else {
-    #doMC::registerDoMC(10) # Linux - WM. Random number issues
-    cluster = makeCluster(10, type = "FORK", outfile = "")  # Linux - WM
-    registerDoParallel(cluster) # Linux- WM
-    #registerDoRNG(1234, once = FALSE) # Linux- WM
-    # Progress bar:
-    pb = txtProgressBar(min = 1, max = n.loops, style = 3) # Linux- WM
-  }
-
-
+# create a list to collect PSA outcomes if the model runs in the PSA mode
+if(run_mode == "PSA"){
+  PSA_results_no_screen <- matrix(0, nrow = 8 * length(out_names), ncol = n.loops)
+  rownames(PSA_results_no_screen) <- rep(out_names, 8)
+  PSA_results_screen <- PSA_results_no_screen
+}
 ### run the model:
-results_no_screen = foreach::foreach(iterator = 1:n.loops, .options.RNG = optsN) %dorng% {
-  gc()
-  
-  #Progress bar:
-  if(f.get_os() != "windows") {
-    setTxtProgressBar(pb, iterator) 
-  }
+system.time(for(iter in 1:n.loops) {
   
 #Select appropriate parameter set to use
-p.set <- ifelse(run_mode =="PSA", i, 1) 
-
+p.set <- ifelse(run_mode =="PSA", iter, 1) 
+#p.set=1
 #Set up the model parameters according to current parameter set
 f.set_parameters(p.set)
 
@@ -80,16 +61,31 @@ pop <- f.risk.calc(population)
 #Set up random number array for each individual
 m.Rand <- f.generate_random()
 
-Simulate_NHD(n.i, n.t, pop)
+Dipstick_screen ==0 #Set whether the screening with dipstick happens, 0 - no, 1- yes
+Dipstick_age ==0 #Set the age of the dipstick if screening happens, set to zero if no screening
+results_no_screen[[iter]] = Simulate_NHD(n.i, n.t, pop)
 
-
+if(run_mode == "PSA"){
+  PSA_results_no_screen[, iter] <- rowSums(results_no_screen[[iter]])
+  write.table(PSA_results_no_screen,"PSA_results_no_screen.txt")
 }
 
-if(f.get_os() == "windows") {
-  stopCluster(cluster)
-} else {
-  close(pb)
-  stopCluster(cluster)
+Dipstick_screen ==1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
+Dipstick_age ==70 #Set the age of the dipstick if screening happens
+results_screen[[iter]] = Simulate_NHD(n.i, n.t, pop)
+
+})
+
+############################################
+#' Analyse the results depending whether the runds were deterministic or probabilistic 
+#' Analyse the results
+if(run_mode == "Deterministic"){
+  
+  results_no_screen_cum <- process_DA_results(results_no_screen, "results_NoScreen.txt")
+  
 }
 
-
+if(run_mode == "PSA"){
+  
+  results_no_screen_PSA <- process_PSA_results(results_no_screen, "results_no_screen_PSA.txt")
+}

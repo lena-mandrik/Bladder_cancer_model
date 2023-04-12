@@ -77,10 +77,7 @@ n.s_long   <- length(states_long)  # the number of all health states
 v.dwc <- 1 / (1 + d.c) ^ (0:n.t)   # calculate the cost discount weight based on the discount rate d.c    
 v.dwe <- 1 / (1 + d.e) ^ (0:n.t)   # calculate the QALY discount weight based on the discount rate d.e
 
-# Create matrix summarising the screening process
-screen_names <- c("Invite_DS","Respond_DS", "Positive_DS", "Invite_FC", "Diagnostic_FC", "TURBT_FS",
-                  "Next_Surv", 
-                  "Die_TURBT", "HG_BC", "LG_BC", "FP", "FN")
+
 
 #Specify outcomes
 out_names <- c("TOTAL_COSTS", "BC_COSTS", "SCREEN_COSTS", 
