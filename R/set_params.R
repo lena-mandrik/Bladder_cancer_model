@@ -45,7 +45,7 @@ f.stage <- function(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.
 #' 
 f.set_parameters <- function(p.set) {
   
-  for(i in 1:24){ #length(Param.names) for NHD parameters
+  for(i in 1:25){ #length(Param.names) for NHD parameters
     
     vector.Param <- Param_sets[p.set, i]
     names(vector.Param) <- c(Param.names[i])
@@ -61,6 +61,7 @@ f.set_parameters <- function(p.set) {
                      Param_sets[p.set, "DT.UPTK.70"],
                      Param_sets[p.set, "DT.UPTK.F"],
                      Param_sets[p.set, "DT.UPTK.NRESP"],
+                     Param_sets[p.set, "DT.UPTK.INC"],
                      Param_sets[p.set, "DT.UPTK.IMD2"],
                      Param_sets[p.set, "DT.UPTK.IMD3"],
                      Param_sets[p.set, "DT.UPTK.IMD4"],
@@ -70,15 +71,21 @@ f.set_parameters <- function(p.set) {
   #Set the parameters for diagnostic uptake with screen positive
   Diag.UPTK <- Param_sets[p.set, "Diag.UPTK"]
   
-  #Set the parameters for tests sensitivity and False positive (from specificity)
-  test_accuracy <- c(Param_sets[p.set, "Sens.dipstick.LG"],
-                     Param_sets[p.set, "Sens.dipstick.St1"],
-                     Param_sets[p.set, "Sens.dipstick.St2.4"],
-                     Param_sets[p.set, "Spec.dipstick"],
-                     Param_sets[p.set, "Sens.cystoscopy.HG"],
-                     Param_sets[p.set, "Spec.cystoscopy.HG"],
-                     Param_sets[p.set, "Sens.cystoscopy.LG"],
-                     Param_sets[p.set, "Spec.cystoscopy.LG"])
+  #Set the parameters for tests sensitivity and False positive (from specificity) in a format of a value by state to use in matrix multiplication
+  test_accuracy <- as.matrix(c((1-Param_sets[p.set, "Spec.dipstick"]), #for no cancer
+                     Param_sets[p.set, "Sens.dipstick.LG"], #LG state
+                     Param_sets[p.set, "Sens.dipstick.St1"], #stage 1
+                     0, # Death OC
+                     rep(Param_sets[p.set, "Sens.dipstick.St2.4"],3), #stages 2-4
+                     0), ncol=1) # Death BC
+                     
+  rownames(test_accuracy)  <- states_long
+  colnames(test_accuracy)<- "Sens"
+                     
+                     #Param_sets[p.set, "Sens.cystoscopy.HG"],
+                     #Param_sets[p.set, "Spec.cystoscopy.HG"],
+                     #Param_sets[p.set, "Sens.cystoscopy.LG"],
+                     #Param_sets[p.set, "Spec.cystoscopy.LG"])
   
   # Set harms: mortality due to TURBT                  
   Mort.TURBT <- Param_sets[p.set, "Mort.TURBT"]
@@ -168,7 +175,7 @@ f.generate_parameters <- function(Params, N_sets){
   #Set up matrix for parameter sets
   Param_sets <- matrix(0, ncol = N_sets, nrow = length(Params[,1]))
   rownames(Param_sets) <- rownames(Params)
-  Param_sets[,1] <- Params[,1]
+  Param_sets[,1] <- Params[,"Param3"]
   
   if(N_sets > 1){
     
@@ -196,8 +203,11 @@ f.generate_parameters <- function(Params, N_sets){
     
     Param_sets[which(Params[, "Distribution"] ==6),2:N_sets] <- Param_sets[which(Params[, "Distribution"] ==6),1]
     
-    
-    
+    Param_sets[which(Params[, "Distribution"] ==7),2:N_sets] <- truncnorm::rtruncnorm(length(Param_sets[which(Params[, "Distribution"] ==7),1])*(N_sets-1), 
+                                                                      a=0, b=1, mean=Params[which(Params[, "Distribution"] ==7), "Param1"], 
+                                                                      sd=Params[which(Params[, "Distribution"] ==7), "Param2"])   
+    # truncated distribution is used for some calibrated parameters that represents porbabilties. They were restricted at [0,1] interval at calibration  by assigning -Inf priors and are truncated here
+
   }
   
   Param_sets <- t(Param_sets)
@@ -208,6 +218,7 @@ f.generate_parameters <- function(Params, N_sets){
   Param_sets
   
 }
+
 
 
 #' @details

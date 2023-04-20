@@ -25,9 +25,9 @@ calc.indiv.TPs <- function(pop, m.Diag){
   
   # Add individual TP for LG to HG cancer based on whether a patient has been diagnosed or not 
   # LG cancers currently don't progress to HG cancers if they are detected unless the period of surveillance passed (2y) in which case they are considered as recurrent LG progressed to HG
-  TP.LGtoHGBC <- as.matrix(rep(P.LGtoHGBC, n.i), ncol=1) # set probability for those who hasn't been diagnosed yet
-  #TP.LGtoHGBC[,1] <- replace(TP.LGtoHGBC[,1], m.Diag[ ,"LG_state"]==0, P.LGtoHGBC) # set probability for those who hasn't been diagnosed yet
-  TP.LGtoHGBC[,1] <- replace(TP.LGtoHGBC[,1], m.Diag[ ,"BC_diag"]==1 & m.Diag[ ,"LG_state"]==1 &(pop[,"age"]-m.Diag[ ,"LG_age_diag"])>1, P.Recurrence.LR*P.LGtoHGBC) # set probability of recurrence instead of progression to HG for those who were diagnosed, after 1 year of surveillance when the p is assumed to be zero
+  TP.LGtoHGBC <- as.matrix(rep(0, n.i), ncol=1) 
+  TP.LGtoHGBC[,1] <- replace(TP.LGtoHGBC[,1], m.Diag[ ,"LG_diag"]==0, P.LGtoHGBC) # set probability for those who hasn't been diagnosed yet
+  TP.LGtoHGBC[,1] <- replace(TP.LGtoHGBC[,1], m.Diag[ ,"LG_diag"]==1 & (pop[,"age"]-m.Diag[ ,"LG_age_diag"])>1, P.LGtoHGBC*P.Recurrence.LR) # set probability of recurrence and progression to HG for those who were diagnosed, after 1 year of surveillance when the p is assumed to be zero
   
   TP <- cbind(TP.OC, TP.BCLG, TP.BCHG, TP.LGtoHGBC)
   colnames(TP) <- c("TP.OC", "TP.BCLG", "TP.BCHG", "TP.LGtoHGBC")
