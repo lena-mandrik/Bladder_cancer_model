@@ -5,12 +5,11 @@
 #' @params
 #' pop: a population matrix of individuals, each with a current age
 #' m:Screen: an array of screening history
-#' m.Diag: a matrix giving diagnostic status for all individuals
 #' m.State: a matrix giving current health state for all individuals
 #' @return a matrix of individualised screening parameters
 #' 
 
-calc.screen.Params <- function(pop, m.Screen, m.Diag, m.State) {
+calc.screen.Params <- function(pop, m.Screen, m.State) {
   
     #Calculates dipstick uptake by personal characteristics
     DS_uptake <- 1/(1+exp(-((cbind((m.State[, "DeathBC"] ==0 & m.State[, "DeathOC"] ==0), pop[,"age"] <55, 
@@ -22,14 +21,19 @@ calc.screen.Params <- function(pop, m.Screen, m.Diag, m.State) {
     #Calculates DT sensitivity or false positives depending upon underlying health state
     DS_diag <- (m.State %*% test_accuracy[, "Sens"]) 
     
-
-  scr.Params <- cbind(DS_uptake, DS_diag)
+    #Add diagnostic uptake: considered as 1 in the basecase analysis
+    Diag_uptake <- rep(Diag.UPTK, n.i)
+    
+    colnames(scr.Params) <- c("DS_uptake", "DS_diag")
   
-  colnames(scr.Params) <- c("DS_uptake", "DS_diag")
-  
-  scr.Params
-}
+    scr.Params
+  }
 
+
+Cystoscopy_diag <- diag_accuracy
+
+#bind all the screening params
+scr.Params <- cbind(DS_uptake, DS_diag)
 
 
 #' @details
@@ -47,19 +51,17 @@ calc.screen.Params <- function(pop, m.Screen, m.Diag, m.State) {
 #' 
 DS_screen <- function(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, FITage) {
   
-  #determine who is eligible for FIT screening
-  FIT_elig <- m.Diag[, "CRC_diag"] ==0 & m.Screen[ ,t , "Next_Surv"] ==0 & 
-    m.State[, "DeathCRC"] ==0 & m.State[, "DeathOC"] ==0 &
-    (pop[, "age"] >= FITage | pop[, "age"] >= pop[, "risk_age"]) & 
-    pop[, "age"] <=74 & m.Screen[ ,t , "Invite_FIT"] ==0
-  
+  #determine who is eligible for screening
+  DS_elig <- m.Diag[, "LG_diag"] ==0 & m.Diag[, "HG_diag"] ==0 & 
+    m.State[, "DeathBC"] ==0 & m.State[, "DeathOC"] ==0 &
+    pop[, "age"] == DS_age 
+     
   #invite eligible
-  m.Screen[ ,t+1 , "Invite_FIT"] <- replace(m.Screen[ ,t+1 , "Invite_FIT"],  FIT_elig ==TRUE, 1)
+  m.Screen[ ,t+1 , "Invite_DS"] <- replace(m.Screen[ ,t+1 , "Invite_DS"],  DS_elig ==TRUE, 1)
   
   #decide who takes up invite
-  FIT_invite <- (m.Rand[ ,"FIT_UPTK", t] < scr.Params[, "FIT_uptake"]) & FIT_elig
-  m.Screen[ ,t+1 , "Respond_FIT"] <- replace(m.Screen[ ,t+1 , "Respond_FIT"],  FIT_invite ==TRUE, 1)
-  
+  m.Screen[ ,t+1 , "Respond_DS"] <- ((m.Rand[ ,"Screen_UPTK", t] < scr.Params[, "DS_uptake"]) & DS_elig)*1
+
   #Include a repeat FIT in inadequates DON'T NEED THIS AS ALREADY IN COSTINGS
   #m.Screen[ ,t+1 , "Respond_FIT"] <- m.Screen[ ,t+1 , "Respond_FIT"] + ((m.Rand[ ,"FIT_INAD", t] < inad_FIT) & FIT_invite) * 1 
   

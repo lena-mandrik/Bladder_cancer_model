@@ -81,11 +81,14 @@ f.set_parameters <- function(p.set) {
                      
   rownames(test_accuracy)  <- states_long
   colnames(test_accuracy)<- "Sens"
-                     
-                     #Param_sets[p.set, "Sens.cystoscopy.HG"],
-                     #Param_sets[p.set, "Spec.cystoscopy.HG"],
-                     #Param_sets[p.set, "Sens.cystoscopy.LG"],
-                     #Param_sets[p.set, "Spec.cystoscopy.LG"])
+  
+  #Set the parameters for the diagnostic accuracy of flexible cystoscopy (assumed to be the same for all HG cancers)               
+  diag_accuracy <- as.matrix(c((1-Param_sets[p.set, "Spec.cystoscopy"]), #for no cancer
+                               Param_sets[p.set, "Sens.cystoscopy.LG"], #LG state
+                               Param_sets[p.set, "Sens.cystoscopy.HG"], #stage 1
+                               0, # Death OC
+                               rep(Param_sets[p.set, "Sens.cystoscopy.HG"],3), #stages 2-4
+                               0), ncol=1) # Death BC  
   
   # Set harms: mortality due to TURBT                  
   Mort.TURBT <- Param_sets[p.set, "Mort.TURBT"]

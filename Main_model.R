@@ -18,10 +18,10 @@ library("doRNG")
 set.seed(10)
 
 ###Set up the Global Parameters
-run_mode <- "PSA" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag and TR), "Deterministic" (m.Out only), "PSA" (m.Out only)
+run_mode <- "Deterministic" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag and TR), "Deterministic" (m.Out only), "PSA" (m.Out only)
 cohort <- 1 # 1 = all individuals start model at same age (cohort), 0 = individuals start in model at true (HSE) age
 cohort_age <- 30 #select starting age of cohort (hash out or set to anything if not using cohort)
-n.loops <- 200 # The number of model loops/PSA loops to run 
+n.loops <- 100 # The number of model loops/PSA loops to run 
 cl <- 1  # The cycle length (years) 
 n.t   <- if(cohort==1){100-cohort_age}else{70}  # The number of cycles to run 
 d.c <- 0.035 # The discount rate for costs
@@ -60,13 +60,13 @@ pop <- f.risk.calc(population)
 #Set up random number array for each individual
 m.Rand <- f.generate_random()
 
-Dipstick_screen =0 #Set whether the screening with dipstick happens, 0 - no, 1- yes
-Dipstick_age =0 #Set the age of the dipstick if screening happens, set to zero if no screening
+DS_screen =0 #Set whether the screening with dipstick happens, 0 - no, 1- yes
+DS_age = 60 #Set the age of the dipstick if screening happens, set to zero if no screening
 results_no_screen[[iter]] = Simulate_NHD(n.i, n.t, pop)
 
 if(run_mode == "PSA"){
   PSA_results_no_screen[, iter] <- rowSums(results_no_screen[[iter]])
-  write.table(PSA_results_no_screen,"PSA_results_no_screen.txt")
+  #write.table(PSA_results_no_screen,"PSA_results_no_screen.txt")
 }
 
 #Dipstick_screen =0 #Set whether the screening with dipstick happens, 0 - no, 1- yes
@@ -88,3 +88,8 @@ if(run_mode == "PSA"){
   
   results_no_screen_PSA <- process_PSA_results(results_no_screen, "results_no_screen_PSA.txt")
 }
+
+### COmpare deterministic and PSA, 100 loops
+#LYS_m <- mean(results_no_screen_PSA["LYS", 1:100])
+#LYS_best = 23.43
+#LYS_m  =23.42
