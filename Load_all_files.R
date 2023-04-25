@@ -83,7 +83,7 @@ v.dwe <- 1 / (1 + d.e) ^ (0:n.t)   # calculate the QALY discount weight based on
 out_names <- c("TOTAL_COSTS", "BC_COSTS", "SCREEN_COSTS", 
                "QALYS", "LYS", "LG_SYMPT", "HG_St1_SYMPT", "HG_St2_SYMPT", "HG_St3_SYMPT", "HG_St4_SYMPT", "LG_SCRN", "HG_St1_SCRN", "HG_St2_SCRN", 
                "HG_St3_SCRN", "HG_St4_SCRN",  "HG_St1_MORT", "HG_St2_MORT", "HG_St3_MORT", "HG_St4_MORT", "Die_TURBT", 
-               "Invite_DS","Respond_DS", "Positive_DS", "Invite_FC", "Diagnostic_FC", "TURBT_FS",
+               "Invite_DS","Respond_DS", "Positive_DS", "Respond_Cyst", "Diagnostic_Cyst", "TURBT",
                "FP", "FN")
 
 

@@ -9,7 +9,7 @@
 #' @return a matrix of individualised screening parameters
 #' 
 
-calc.screen.Params <- function(pop, m.Screen, m.State) {
+f.calc.screen.Params <- function(pop, m.Screen, m.State) {
   
     #Calculates dipstick uptake by personal characteristics
     DS_uptake <- 1/(1+exp(-((cbind((m.State[, "DeathBC"] ==0 & m.State[, "DeathOC"] ==0), pop[,"age"] <55, 
@@ -24,16 +24,14 @@ calc.screen.Params <- function(pop, m.Screen, m.State) {
     #Add diagnostic uptake: considered as 1 in the basecase analysis
     Diag_uptake <- rep(Diag.UPTK, n.i)
     
-    colnames(scr.Params) <- c("DS_uptake", "DS_diag")
+    scr.Params <- cbind(DS_uptake, DS_diag, Diag_uptake)
+    
+    colnames(scr.Params) <- c("DS_uptake", "DS_diag", "Cyst_uptake")
   
     scr.Params
   }
 
 
-Cystoscopy_diag <- diag_accuracy
-
-#bind all the screening params
-scr.Params <- cbind(DS_uptake, DS_diag)
 
 
 #' @details
@@ -46,62 +44,79 @@ scr.Params <- cbind(DS_uptake, DS_diag)
 #' pop: a population matrix of individuals, each with a current age
 #' t: current time point
 #' scr.Params: updated screening parameters
-#' FITage: age at which biennial FIT screening starts
+#' DS_age - age when screening happens
 #' @return an updated screening history array
 #' 
-DS_screen <- function(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, FITage) {
+f.DS_screen <- function(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, DS_age) {
   
   #determine who is eligible for screening
-  DS_elig <- m.Diag[, "LG_diag"] ==0 & m.Diag[, "HG_diag"] ==0 & 
+  m.Screen[ ,t+1 , "Invite_DS"] <- (m.Diag[, "LG_diag"] ==0 & m.Diag[, "HG_diag"] ==0 & 
     m.State[, "DeathBC"] ==0 & m.State[, "DeathOC"] ==0 &
-    pop[, "age"] == DS_age 
+    pop[, "age"] == DS_age)*1
      
-  #invite eligible
-  m.Screen[ ,t+1 , "Invite_DS"] <- replace(m.Screen[ ,t+1 , "Invite_DS"],  DS_elig ==TRUE, 1)
-  
   #decide who takes up invite
-  m.Screen[ ,t+1 , "Respond_DS"] <- ((m.Rand[ ,"Screen_UPTK", t] < scr.Params[, "DS_uptake"]) & DS_elig)*1
+  m.Screen[ ,t+1 , "Respond_DS"] <- ((m.Rand[ ,"Respond_DS", t] < scr.Params[, "DS_uptake"]) & m.Screen[ ,t+1 , "Invite_DS"])*1
 
-  #Include a repeat FIT in inadequates DON'T NEED THIS AS ALREADY IN COSTINGS
-  #m.Screen[ ,t+1 , "Respond_FIT"] <- m.Screen[ ,t+1 , "Respond_FIT"] + ((m.Rand[ ,"FIT_INAD", t] < inad_FIT) & FIT_invite) * 1 
-  
   #decide who gets a positive result (includes true positives and false positives)
-  FIT_Pos <- ((m.Rand[ ,"FIT_POS", t] < scr.Params[, "FIT_prob_pos"]) & FIT_invite)
-  m.Screen[ ,t+1 , "Positive_FIT"] <- replace(m.Screen[ ,t+1 , "Positive_FIT"],  FIT_Pos ==TRUE, 1)
+  m.Screen[ ,t+1 , "Positive_DS"] <- ((m.Rand[ ,"Positive_DS", t] < scr.Params[, "DS_diag"]) & m.Screen[ ,t+1 , "Respond_DS"]==1)*1
   
-  #decide who is invited to colonoscopy and who is invited to CTC
-  CTC_invite <- (m.Rand[ ,"COL_CTC", t] < scr.Params[, "CTC_%"]) & m.Screen[ ,t+1 , "Positive_FIT"] ==1
-  m.Screen[ ,t+1 , "Invite_CTC"] <- replace(m.Screen[ ,t+1 , "Invite_CTC"], CTC_invite ==TRUE, 1)
-  Col_invite <- (m.Rand[ ,"COL_CTC", t] >= scr.Params[, "CTC_%"]) & m.Screen[ ,t+1 , "Positive_FIT"] ==1
-  m.Screen[ ,t+1 , "Invite_Scrn_Col"] <- replace(m.Screen[ ,t+1 , "Invite_Scrn_Col"], Col_invite ==TRUE, 1)
+  #Decide who takes up Cystoscopy
+  m.Screen[ ,t+1 , "Respond_Cyst"] <- (m.Rand[ ,"Respond_Cyst", t] < scr.Params[, "Cyst_uptake"] & m.Screen[ ,t+1 , "Positive_DS"] ==1)*1
+                                       
+  #Probability to be diagnosed in each state
+  Cystoscopy_diag <- (m.State %*% test_accuracy[, "Sens"])
   
-  #Decide who takes up CTC and colonoscopy
-  CTC_attend <- (m.Rand[ ,"CTC_UPTK", t] < CTC_Uptk) & CTC_invite
-  Col_attend <- (m.Rand[ ,"COL_UPTK", t] < scr.Params[, "Col_FIT_uptake"]) & Col_invite
+  #Decide who is diagnosed through cystoscopy
+  m.Screen[ ,t+1 , "Diagnostic_Cyst"] <- (m.Rand[ ,"Positive_Cyst", t] < Cystoscopy_diag[,1] & m.Screen[ ,t+1 , "Respond_Cyst"]==1)*1
   
-  #diagnose those found through CTC/Colonoscopy screening
-  LR <- ((m.Rand[ ,"COL_POS", t] < COL_LR_sens) & Col_attend & m.State[, "LR"] ==1) |
-    ((m.Rand[ ,"CTC_POS", t] < CTC_LR_sens) & CTC_attend & m.State[, "LR"] ==1)
-  HR <- ((m.Rand[ ,"COL_POS", t] < COL_HR_sens) & Col_attend & m.State[, "HR"] ==1) |
-    ((m.Rand[ ,"CTC_POS", t] < CTC_HR_sens) & CTC_attend & m.State[, "HR"] ==1) 
-  CRC <- ((m.Rand[ ,"COL_POS", t] < COL_CRC_sens) & Col_attend &
-            (m.State[, "CRCA"] ==1 | m.State[, "CRCB"] ==1 | m.State[, "CRCC"] ==1 | m.State[, "CRCD"] ==1)) |
-    ((m.Rand[ ,"CTC_POS", t] < CTC_CRC_sens) & CTC_attend &
-       (m.State[, "CRCA"] ==1 | m.State[, "CRCB"] ==1 | m.State[, "CRCC"] ==1 | m.State[, "CRCD"] ==1))
+  #Decide who is diagnosed with  LG and HG tumours
+  m.Screen[ ,t+1 , "LG"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & m.State[, "BC_LG"] ==1)*1
+  m.Screen[ ,t+1 , "HG"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & (m.State[, "St1_HG"] ==1 | m.State[, "St2_HG"] ==1 | m.State[, "St3_HG"] ==1 | m.State[, "St4_HG"] ==1))*1
   
-  m.Screen[ ,t+1 , "LR_Adenoma"] <- replace(m.Screen[ ,t+1 , "LR_Adenoma"], LR ==TRUE, 1)
-  m.Screen[ ,t+1 , "HR_Adenoma"] <- replace(m.Screen[ ,t+1 , "HR_Adenoma"], HR ==TRUE, 1)
-  m.Screen[ ,t+1 , "CRC"] <- replace(m.Screen[ ,t+1 , "CRC"], CRC ==TRUE, 1)
+  #Decide who had TURBT (everyone with detected LG and HG cancer). I guess FP cystoscopy can't lead to TURBT?
+  m.Screen[ ,t+1 , "TURBT"] <- (m.Screen[ ,t+1 , "LG"]==1  | m.Screen[ ,t+1 , "HG"]==1)*1
   
-  #Assign to CTC, diagnostic colonoscopy or therapeutic colonoscopy depending upon whether adenoma removal/CRC biopsy required
-  m.Screen[ ,t+1 , "Attend_CTC"] <- replace(m.Screen[ ,t+1 , "Attend_CTC"], CTC_attend ==TRUE, 1)
-  m.Screen[ ,t+1 , "Diagnostic_Scrn_Col"] <- replace(m.Screen[ ,t+1 , "Diagnostic_Scrn_Col"], 
-                                                     Col_attend ==TRUE & LR ==FALSE & HR ==FALSE & CRC ==FALSE, 1)
-  m.Screen[ ,t+1 , "Therapeutic_Scrn_Col"] <- replace(m.Screen[ ,t+1 , "Therapeutic_Scrn_Col"], LR ==TRUE | HR ==TRUE | CRC ==TRUE, 1)
+  #Decide who died from TURBT
+  m.Screen[ ,t+1 , "Die_TURBT"] <- (m.Rand[ ,"Die_TURBT", t] < Mort.TURBT & m.Screen[ ,t+1 , "TURBT"]==1)*1
+    
+  #Decide who had FP (everyone without cancer and FP dipstick and cystoscopy)
+  m.Screen[ ,t+1 , "FP"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & m.State[, "NoBC"] ==1)*1
   
-  #Include a repeat diagnostic colonoscopy in inadequates (inadequate for both CTC and colonoscopy)
-  m.Screen[ ,t+1 , "Diagnostic_Scrn_Col"] <- m.Screen[ ,t+1 , "Diagnostic_Scrn_Col"] + 
-    (((m.Rand[ ,"COL_INAD", t] < inad_COL) & Col_attend) * 1) + (((m.Rand[ ,"CTC_INAD", t] < inad_CTC) & CTC_attend) * 1)
+  #Decide who had FN (everyone with cancer who hasn't been diagnosed)
+  m.Screen[ ,t+1 , "FN"] <- (m.Screen[ ,t+1 , "TURBT"]==0 & (m.State[, "St1_HG"] ==1 | m.State[, "St2_HG"] ==1 | m.State[, "St3_HG"] ==1 | m.State[, "St4_HG"] ==1))*1
   
   m.Screen
+  
+}
+
+
+#' @details
+#' This function updates m.Diag following screening 
+#' @params
+#' m:Screen: an array of screening and surveillance history
+#' m.State: a matrix of current health states for all individuals
+#' m.Diag: a matrix giving diagnostic status for all individuals
+#' pop: a population matrix of individuals, each with a current age
+#' t: current time point
+#' scr.Params: updated screening parameters
+#' @return an updated current diagnostic information matrix
+#' 
+f.screen_diag <- function(m.Screen, m.State, m.Diag, pop, t) {
+  
+  #Modify diagnosis columns to include new BC diagnoses from screening and surveillance
+  m.Diag[, "HG_yr_diag"] <- m.Diag[, "HG_yr_diag"] + m.Screen[ ,t+1 , "HG"]
+  m.Diag[, "LG_yr_diag"] <- m.Diag[, "LG_yr_diag"] + m.Screen[ ,t+1 , "LG"]
+  m.Diag[, "yr_diag"] <- m.Diag[, "yr_diag"] + m.Screen[ ,t+1 , "HG"] + m.Screen[ ,t+1 , "LG"]
+  
+  m.Diag[, "HG_diag"] <- m.Diag[, "HG_diag"] + m.Screen[ ,t+1 , "HG"]
+  m.Diag[, "HG_screen_diag"] <- m.Diag[, "HG_screen_diag"] + m.Screen[ ,t+1 , "HG"]
+  m.Diag[, "HG_age_diag"] <- m.Diag[, "HG_age_diag"] + (pop[, "age"] * m.Screen[ ,t+1 , "HG"])
+  m.Diag[, "HG_stage_diag"] <- m.Diag[, "HG_stage_diag"] + 
+    ((m.State[, "St1_HG"] * 1 + m.State[, "St2_HG"] * 2 + m.State[, "St3_HG"] * 3+ m.State[, "St4_HG"] * 4)* m.Screen[ ,t+1 , "HG"])
+  
+  m.Diag[, "LG_diag"] <- m.Diag[, "LG_diag"] + m.Screen[ ,t+1 , "LG"]
+  m.Diag[, "LG_screen_diag"] <- m.Diag[, "LG_screen_diag"] + m.Screen[ ,t+1 , "LG"]
+  m.Diag[, "LG_age_diag"] <- m.Diag[, "LG_age_diag"] + (pop[, "age"] * m.Screen[ ,t+1 , "LG"])
+  
+  m.Diag
 }

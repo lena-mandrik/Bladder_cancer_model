@@ -8,7 +8,7 @@
 #' m.State: matrix containing health states
 #' @return matrix of individualised transition probabilities for each transition
 
-calc.indiv.TPs <- function(pop, m.Diag){
+f.calc.indiv.TPs <- function(pop, m.Diag){
   
   
   # Other cause mortality transition 
@@ -46,7 +46,7 @@ calc.indiv.TPs <- function(pop, m.Diag){
  #' m.State: matrix containing health states
  #' @return matrix of individualised transition probabilities for each transition
  #' 
-calc.BCmort.TP <-function(pop, m.Diag){
+f.calc.BCmort.TP <-function(pop, m.Diag){
   
 # Update the transitions for bladder cancer mortality 
 TP.BC.1.mort <- BC.1.mort[paste(pop[,"sex"],pop[,"age"], sep = ""), ]
@@ -78,7 +78,7 @@ TP_mort
  #' TP: matrix of individualised transition probabilities for each transition
  #' @return matrix of transition probabilities for each individual
  #' 
-Probs <- function(m.M, TP) {    
+f.Probs <- function(m.M, TP) {    
   
   # M_it:    health state occupied by individual i at cycle t (character variable) 
   
@@ -119,7 +119,7 @@ Probs <- function(m.M, TP) {
 #' m.Rand: matrix of individual random numbers
 #' t: current cycle
 #' @return a vector of new health states
-samplev <- function (m.p, m.Rand, t) {
+f.samplev <- function (m.p, m.Rand, t) {
   lev <- 1:n.s
   U <- apply(m.p, 1, cumsum)
   

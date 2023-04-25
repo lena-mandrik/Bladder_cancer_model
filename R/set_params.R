@@ -43,6 +43,7 @@ f.stage <- function(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.
 #' p.set: Parameter set selected
 #' @return all parameters into the global environment
 #' 
+#' 
 f.set_parameters <- function(p.set) {
   
   for(i in 1:25){ #length(Param.names) for NHD parameters
@@ -79,16 +80,18 @@ f.set_parameters <- function(p.set) {
                      rep(Param_sets[p.set, "Sens.dipstick.St2.4"],3), #stages 2-4
                      0), ncol=1) # Death BC
                      
-  rownames(test_accuracy)  <- states_long
-  colnames(test_accuracy)<- "Sens"
+
   
   #Set the parameters for the diagnostic accuracy of flexible cystoscopy (assumed to be the same for all HG cancers)               
   diag_accuracy <- as.matrix(c((1-Param_sets[p.set, "Spec.cystoscopy"]), #for no cancer
                                Param_sets[p.set, "Sens.cystoscopy.LG"], #LG state
                                Param_sets[p.set, "Sens.cystoscopy.HG"], #stage 1
-                               0, # Death OC
-                               rep(Param_sets[p.set, "Sens.cystoscopy.HG"],3), #stages 2-4
+                              0, # Death OC
+                             rep(Param_sets[p.set, "Sens.cystoscopy.HG"],3), #stages 2-4
                                0), ncol=1) # Death BC  
+  
+  rownames(test_accuracy)  <- rownames(diag_accuracy)  <- states_long
+  colnames(test_accuracy) <- colnames(diag_accuracy) <-"Sens"
   
   # Set harms: mortality due to TURBT                  
   Mort.TURBT <- Param_sets[p.set, "Mort.TURBT"]
@@ -112,9 +115,10 @@ f.set_parameters <- function(p.set) {
   DS_names <-rownames(m.Cost.screen) <- c("Invite_DS","Respond_DS", "Positive_DS")
   
   # Create matrix summarising the screening process
-  screen_names <- c("Invite_DS","Respond_DS", "Positive_DS", "Invite_FC", "Diagnostic_FC", "TURBT_FS",
+  screen_names <- c("Invite_DS","Respond_DS", "Positive_DS", "Respond_Cyst", "Diagnostic_Cyst", "TURBT",
                     "Next_Surv", 
-                    "Die_TURBT", "HG_BC", "LG_BC", "FP", "FN")
+                    "Die_TURBT", "FP", "FN",
+                    "HG", "LG")
 
   # Set treatment and surveillance costs
   # Create Cost matrices 
@@ -229,6 +233,6 @@ f.generate_parameters <- function(Params, N_sets){
 #' @params
 #' @return an array of random numbers for each event, person and time cycle
 f.generate_random <- function() {
-  events <- c("PROBS", "Smoke_quit", "BCLG_recurrence", "SYMPT_HG", "SYMPT_LG","Death_BC", "Screen_UPTK","Diag_UPTK")
+  events <- c("PROBS", "Smoke_quit", "BCLG_recurrence", "SYMPT_HG", "SYMPT_LG","Death_BC", "Respond_DS", "Positive_DS", "Respond_Cyst", "Positive_Cyst", "Die_TURBT")
   array(runif(n.i * length(events) * n.t), dim = c(n.i, length(events), n.t), dimnames = list(NULL, events, NULL))
 } 

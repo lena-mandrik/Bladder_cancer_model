@@ -51,12 +51,12 @@ Simulate_NHD <- function(n.i, n.t, pop) {
   # loop to run the model over time
   for(t in 1:n.t) {
     
-    #Natural History
-    TP <- calc.indiv.TPs(pop, m.Diag) #calculate new individualised transition probabilities for onset of BC and OC mortality
+    # Natural History
+    TP <- f.calc.indiv.TPs(pop, m.Diag) #calculate new individualised transition probabilities for onset of BC and OC mortality
 
-    m.p <- Probs(m.M[, t], TP) #calculate transition probabilities for 4 states at cycle t (excludes TP for those with invasive BC)
+    m.p <- f.Probs(m.M[, t], TP) #calculate transition probabilities for 4 states at cycle t (excludes TP for those with invasive BC)
     
-    m.M[, t+1] <- samplev(m.p, m.Rand, t) #Sample the next health state and store it in the Matrix m.M numerically
+    m.M[, t+1] <- f.samplev(m.p, m.Rand, t) #Sample the next health state and store it in the Matrix m.M numerically
     # 1- no cancer, 2- LG cancer, 3 -HG cancer, 4 - mortality
     
     # Record the characteristics of onset for HG cancer
@@ -64,7 +64,7 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     new_HG <-  1*(m.M[, t+1] ==3 & m.M[, t] != 3)
     m.Diag[, "HG_yr_onset"] <- m.Diag[, "HG_yr_onset"] + new_HG
     
-    #Mark those individuals who just had BC onset
+    # Mark those individuals who just had BC onset
     m.Diag[, "HG_age_onset"] <- m.Diag[, "HG_age_onset"] + (pop[, "age"] * new_HG)  
     
     # Mark in m.Diag all persons with BC (independently on diagnosis)
@@ -100,8 +100,10 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     m.Diag <- f.symptom(m.Diag, m.State, m.Rand, pop, t, m.M) 
     
     # Screening detection
-    if(Dipstick_screen ==1){
-      scr.Params <- calc.screen.Params(pop, m.Screen, m.State)
+    if(DS_screen ==1){
+      scr.Params <- f.calc.screen.Params(pop, m.Screen, m.State)
+      m.Screen <- f.DS_screen(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, DS_age)
+      m.Diag <- f.screen_diag(m.Screen, m.State, m.Diag, pop, t)
     }
   
     # define BC deaths
@@ -120,11 +122,11 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     m.M[, t+1] <- replace(m.M[, t+1], m.M_8s[, t+1]==8, 4)
     
     # Update the QALYs and costs (not half cycle corrected)
-    m.E[, t+1] <- calc.utility(m.State, m.Diag, pop, t) # Assess effects per individual during the cycle t+1 
-    m.C[, t+1] <- calc.cost(m.State, m.Diag, m.Cost.treat) # Assess CRC treatment costs per individual during the cycle t+1 (note not half cycle corrected) 
+    m.E[, t+1] <- f.calc.utility(m.State, m.Diag, pop, t) # Assess effects per individual during the cycle t+1 
+    m.C[, t+1] <- f.calc.cost(m.State, m.Diag, m.Cost.treat) # Assess CRC treatment costs per individual during the cycle t+1 (note not half cycle corrected) 
     
     # Gather outcomes for cycle t (total and subgroups)
-    m.Out <- aggregate.outcomes(m.M_8s, m.Out, m.M, m.E, m.C, m.Diag, m.Screen, m.State, pop, t)
+    m.Out <- f.aggregate.outcomes(m.M_8s, m.Out, m.M, m.E, m.C, m.Diag, m.Screen, m.State, pop, t)
    
     # Update the age for only those individuals who are alive
     IND <- m.M[, t+1] != 4

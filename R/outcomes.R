@@ -10,7 +10,7 @@
 
 #' @return a vector of costs for each person
 
-calc.cost <- function(m.State, m.Diag, m.Cost.treat){
+f.calc.cost <- function(m.State, m.Diag, m.Cost.treat){
   
   #Treatment costs in people diagnosed with cancer (up to 5 years after diagnosis) 
   m.cost <- (m.State * m.Cost.treat[paste(m.Diag[, "yr_diag"]), ]) 
@@ -35,7 +35,7 @@ calc.cost <- function(m.State, m.Diag, m.Cost.treat){
 #' pop: a population matrix of individuals, each with a current age
 #' t: cycle
 #' @return a vector of utilities for each person
-calc.utility <- function(m.State, m.Diag, pop, t) {    
+f.calc.utility <- function(m.State, m.Diag, pop, t) {    
   
   #First calculate age decrement
   v.utility <- pop[, "EQ5D"] - (Utility.age * (pop[, "age"] - pop[, "age_0"]))
@@ -81,7 +81,7 @@ calc.utility <- function(m.State, m.Diag, pop, t) {
 #' t: cycle number
 #' @return a matrix of aggregated, weighted outcomes for time t
 
-aggregate.outcomes <- function(m.M_8s, m.Out, m.M, m.E, m.C, m.Diag, m.Screen, m.State, pop, t) {
+f.aggregate.outcomes <- function(m.M_8s, m.Out, m.M, m.E, m.C, m.Diag, m.Screen, m.State, pop, t) {
   
   ###Fill outcomes matrix
   
@@ -123,9 +123,9 @@ aggregate.outcomes <- function(m.M_8s, m.Out, m.M, m.E, m.C, m.Diag, m.Screen, m
   m.Out["Invite_DS", t+1] <- sum(m.Screen[, t+1, "Invite_DS"] * pop[, "weighting"]) # total number of dipstick kits sent
   m.Out["Respond_DS", t+1] <- sum(m.Screen[, t+1, "Respond_DS"] * pop[, "weighting"]) # total number of dipstick kits responders
   m.Out["Positive_DS", t+1] <- sum((m.Screen[, t+1, "Positive_DS"]) * pop[, "weighting"]) # total number of positive dipstick 
-  m.Out["Invite_FC", t+1] <- sum((m.Screen[, t+1, "Invite_FC"]) * pop[, "weighting"]) # total number of follow up CF that were tested
-  m.Out["Diagnostic_FC", t+1] <- sum((m.Screen[, t+1, "Diagnostic_FC"]) * pop[, "weighting"]) # total number of follow up CF that were tested
-  m.Out["TURBT_FS", t+1] <- sum((m.Screen[, t+1, "TURBT_FS"]) * pop[, "weighting"]) # total number of follow up CF that were tested
+  m.Out["Respond_Cyst", t+1] <- sum((m.Screen[, t+1, "Respond_Cyst"]) * pop[, "weighting"]) # total number of follow up CF that were tested
+  m.Out["Diagnostic_Cyst", t+1] <- sum((m.Screen[, t+1, "Diagnostic_Cyst"]) * pop[, "weighting"]) # total number of follow up CF that were tested
+  m.Out["TURBT", t+1] <- sum((m.Screen[, t+1, "TURBT"]) * pop[, "weighting"]) # total number of follow up CF that were tested
   
   m.Out["FP", t+1] <- sum(m.Screen[, t+1, "FP"] * pop[, "weighting"]) # total number of CTCs used
   m.Out["FN", t+1] <- sum(m.Screen[, t+1, "FN"] * pop[, "weighting"]) # total number of CTCs used
