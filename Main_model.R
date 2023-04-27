@@ -70,6 +70,10 @@ results_no_screen[[iter]] = Simulate_NHD(n.i, n.t, pop_ns)
 # Run the model for screening pop
 DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
 DS_age = 70 #Set the age of the dipstick if screening happens, set to zero if no screening
+DS_round = 3 #' DS_round - number of the screening rounds
+DS_freq =1   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
+ 
+
 results_screen_70[[iter]] = Simulate_NHD(n.i, n.t, pop_sc_70)
 
 # Run the model for screening pop

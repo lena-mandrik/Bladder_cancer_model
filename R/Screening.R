@@ -44,32 +44,44 @@ f.calc.screen.Params <- function(pop, m.Screen, m.State) {
 #' pop: a population matrix of individuals, each with a current age
 #' t: current time point
 #' scr.Params: updated screening parameters
-#' DS_age - age when screening happens
+#' DS_age - age when screening starts
+#' DS_round - number of the screening rounds
+#' DS_freq - frequency of the screening rounds
 #' @return an updated screening history array
 #' 
-f.DS_screen <- function(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, DS_age) {
+f.DS_screen <- function(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, DS_age, DS_round, DS_freq, n_round) {
   
-  #determine who is eligible for screening
+  # Determine who is eligible for screening
+  #m.Screen[ ,t+1 , "Invite_DS"] <- (m.Diag[, "LG_diag"] ==0 & m.Diag[, "HG_diag"] ==0 & 
+  #  m.State[, "DeathBC"] ==0 & m.State[, "DeathOC"] ==0 &
+  #  pop[, "age"] == DS_age)*1
+  
+  # set n_round as the current screening round
+  
   m.Screen[ ,t+1 , "Invite_DS"] <- (m.Diag[, "LG_diag"] ==0 & m.Diag[, "HG_diag"] ==0 & 
-    m.State[, "DeathBC"] ==0 & m.State[, "DeathOC"] ==0 &
-    pop[, "age"] == DS_age)*1
-     
-  #decide who takes up invite
+                                      m.State[, "DeathBC"] ==0 & m.State[, "DeathOC"] ==0 & (pop[, "age"] == DS_age || 
+                                         (pop[, "age"] > DS_age & n_round < DS_round & (DS_freq ==1 | (m.Screen[ ,t, "Invite_DS"]==0 & DS_freq ==2)))))*1
+  
+  # Update the number of screen rounds each person received 
+  n_round[m.Screen[ ,t+1 , "Invite_DS"]==1] <<- n_round[m.Screen[ ,t+1 , "Invite_DS"]==1]+1
+  # Assign n_round outside of the function
+
+  # Decide who takes up invite
   m.Screen[ ,t+1 , "Respond_DS"] <- ((m.Rand[ ,"Respond_DS", t] < scr.Params[, "DS_uptake"]) & m.Screen[ ,t+1 , "Invite_DS"])*1
 
-  #decide who gets a positive result (includes true positives and false positives)
+  # Decide who gets a positive result (includes true positives and false positives)
   m.Screen[ ,t+1 , "Positive_DS"] <- ((m.Rand[ ,"Positive_DS", t] < scr.Params[, "DS_diag"]) & m.Screen[ ,t+1 , "Respond_DS"]==1)*1
   
-  #Decide who takes up Cystoscopy
+  # Decide who takes up Cystoscopy
   m.Screen[ ,t+1 , "Respond_Cyst"] <- (m.Rand[ ,"Respond_Cyst", t] < scr.Params[, "Cyst_uptake"] & m.Screen[ ,t+1 , "Positive_DS"] ==1)*1
                                        
-  #Probability to be diagnosed in each state
+  # Probability to be diagnosed in each state
   Cystoscopy_diag <- (m.State %*% test_accuracy[, "Sens"])
   
-  #Decide who is diagnosed through cystoscopy
+  # Decide who is diagnosed through cystoscopy
   m.Screen[ ,t+1 , "Diagnostic_Cyst"] <- (m.Rand[ ,"Positive_Cyst", t] < Cystoscopy_diag[,1] & m.Screen[ ,t+1 , "Respond_Cyst"]==1)*1
   
-  #Decide who is diagnosed with  LG and HG tumours
+  # Decide who is diagnosed with  LG and HG tumours
   m.Screen[ ,t+1 , "LG"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & m.State[, "BC_LG"] ==1)*1
   m.Screen[ ,t+1 , "HG"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & (m.State[, "St1_HG"] ==1 | m.State[, "St2_HG"] ==1 | m.State[, "St3_HG"] ==1 | m.State[, "St4_HG"] ==1))*1
   

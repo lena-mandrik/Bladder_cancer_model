@@ -48,6 +48,8 @@ Simulate_NHD <- function(n.i, n.t, pop) {
   #Create additional matrices for subgroup results
   #m.Out_M <- m.Out_F <- m.Out_smoke <- m.Out_past.smoke <- m.Out
   
+  n_round <<- rep(0, n.i) # Set the number of screening rounds counts as zero before the cycles
+  
   # loop to run the model over time
   for(t in 1:n.t) {
     
@@ -102,7 +104,7 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     # Screening detection
     if(DS_screen ==1){
       scr.Params <- f.calc.screen.Params(pop, m.Screen, m.State)
-      m.Screen <- f.DS_screen(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, DS_age)
+      m.Screen <- f.DS_screen(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, DS_age, DS_round, DS_freq, n_round)
       m.Diag <- f.screen_diag(m.Screen, m.State, m.Diag, pop, t)
       # Replace with death for those who died from perforation during TURBT
       m.M[,t+1][which(m.Screen[ ,t+1 , "Die_TURBT"]==1)] <- 4
