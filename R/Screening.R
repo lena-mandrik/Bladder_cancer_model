@@ -74,10 +74,13 @@ f.DS_screen <- function(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, D
   m.Screen[ ,t+1 , "HG"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & (m.State[, "St1_HG"] ==1 | m.State[, "St2_HG"] ==1 | m.State[, "St3_HG"] ==1 | m.State[, "St4_HG"] ==1))*1
   
   #Decide who had TURBT (everyone with detected LG and HG cancer). I guess FP cystoscopy can't lead to TURBT?
-  m.Screen[ ,t+1 , "TURBT"] <- (m.Screen[ ,t+1 , "LG"]==1  | m.Screen[ ,t+1 , "HG"]==1)*1
+  #m.Screen[ ,t+1 , "TURBT"] <- (m.Screen[ ,t+1 , "LG"]==1  | m.Screen[ ,t+1 , "HG"]==1)*1
+  
+  #Decide who had TURBT (everyone with detected LG and HG cancer including FP)
+  m.Screen[ ,t+1 , "TURBT"] <- m.Screen[ ,t+1 , "Diagnostic_Cyst"]
   
   #Decide who died from TURBT
-  m.Screen[ ,t+1 , "Die_TURBT"] <- (m.Rand[ ,"Die_TURBT", t] < Mort.TURBT & m.Screen[ ,t+1 , "TURBT"]==1)*1
+  m.Screen[ ,t+1 , "Die_TURBT"] <- ((m.Rand[ ,"Die_TURBT", t] < Mort.TURBT) & m.Screen[ ,t+1 , "TURBT"]==1)*1
     
   #Decide who had FP (everyone without cancer and FP dipstick and cystoscopy)
   m.Screen[ ,t+1 , "FP"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & m.State[, "NoBC"] ==1)*1
@@ -104,6 +107,7 @@ f.DS_screen <- function(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, D
 f.screen_diag <- function(m.Screen, m.State, m.Diag, pop, t) {
   
   #Modify diagnosis columns to include new BC diagnoses from screening and surveillance
+  m.Diag[, "HG_new_diag"] <- m.Diag[, "HG_new_diag"] +m.Screen[ ,t+1 , "HG"]
   m.Diag[, "HG_yr_diag"] <- m.Diag[, "HG_yr_diag"] + m.Screen[ ,t+1 , "HG"]
   m.Diag[, "LG_yr_diag"] <- m.Diag[, "LG_yr_diag"] + m.Screen[ ,t+1 , "LG"]
   m.Diag[, "yr_diag"] <- m.Diag[, "yr_diag"] + m.Screen[ ,t+1 , "HG"] + m.Screen[ ,t+1 , "LG"]
@@ -114,9 +118,40 @@ f.screen_diag <- function(m.Screen, m.State, m.Diag, pop, t) {
   m.Diag[, "HG_stage_diag"] <- m.Diag[, "HG_stage_diag"] + 
     ((m.State[, "St1_HG"] * 1 + m.State[, "St2_HG"] * 2 + m.State[, "St3_HG"] * 3+ m.State[, "St4_HG"] * 4)* m.Screen[ ,t+1 , "HG"])
   
+  m.Diag[, "LG_new_diag"] <- m.Diag[, "LG_new_diag"] +m.Screen[ ,t+1 , "LG"]
   m.Diag[, "LG_diag"] <- m.Diag[, "LG_diag"] + m.Screen[ ,t+1 , "LG"]
   m.Diag[, "LG_screen_diag"] <- m.Diag[, "LG_screen_diag"] + m.Screen[ ,t+1 , "LG"]
   m.Diag[, "LG_age_diag"] <- m.Diag[, "LG_age_diag"] + (pop[, "age"] * m.Screen[ ,t+1 , "LG"])
   
   m.Diag
 }
+
+
+#' @details
+#' This function updates m.M following screening 
+#' @params
+#' m:Screen: an array of screening and surveillance history
+#' m.State: a matrix of current health states for all individuals
+#' m.Diag: a matrix giving diagnostic status for all individuals
+#' m.M: a matrix with health states for each individual
+#' pop: a population matrix of individuals, each with a current age
+#' t: current time point
+#' scr.Params: updated screening parameters
+#' @return an updated current m.M
+#' 
+#' 
+
+#f.update.m.M <- function(m.M, m.Screen, m.Diag, t){
+  
+  # Replace with death for those who died from perforation during TURBT
+ # m.M[,t+1][which(m.Screen[ ,t+1 , "Die_TURBT"]==1)] <- 4
+  
+  # chloe: there needs to be an adjustment if patients need to be assumed to return in no cancer state in the end of the survival data -10 y for HRBC
+  # Replace with no cancer for those who had HG cancer but survived for 10 years
+ # m.M[,t+1][which(m.Diag[ ,"HG_yr_diag"] >=10)] <- 1
+  
+  # Replace with no cancer for those who had LG cancer for 3 years
+ # m.M[,t+1][which(m.Screen[ ,t+1 , "LG"]==1 & m.Diag[ ,"LG_yr_diag"] >=3)] <- 1
+  
+ # return(m.M)
+#}

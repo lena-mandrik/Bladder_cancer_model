@@ -104,10 +104,14 @@ Simulate_NHD <- function(n.i, n.t, pop) {
       scr.Params <- f.calc.screen.Params(pop, m.Screen, m.State)
       m.Screen <- f.DS_screen(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, DS_age)
       m.Diag <- f.screen_diag(m.Screen, m.State, m.Diag, pop, t)
+      # Replace with death for those who died from perforation during TURBT
+      m.M[,t+1][which(m.Screen[ ,t+1 , "Die_TURBT"]==1)] <- 4
+      # NOTE: currently only a progress to HGBC after the surveillance for 3 years is considered for LGBC. HGBC are only following the survival curve.
+      # Not sure whether I need to return to no cancer everyone in the end of the 10 year time period
     }
   
     # define BC deaths
-    TP_BC.mort <- calc.BCmort.TP(pop, m.Diag)
+    TP_BC.mort <- f.calc.BCmort.TP(pop, m.Diag)
     new_BC1_death <- 1*((m.Rand[ ,"Death_BC", t] < TP_BC.mort[,"TP.BC.1.mort"]) & m.State[ ,"St1_HG"]>0)
     new_BC2_death <- 1*((m.Rand[ ,"Death_BC", t] < TP_BC.mort[,"TP.BC.2.mort"]) & m.State[ ,"St2_HG"]>0)
     new_BC3_death <- 1*((m.Rand[ ,"Death_BC", t] < TP_BC.mort[,"TP.BC.3.mort"]) & m.State[ ,"St3_HG"]>0)
@@ -118,6 +122,7 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     m.Diag[, "age_BC_death"] <- m.Diag[, "age_BC_death"] + (pop[, "age"] * BC_death_all) # Record the age of death for those with cancer
     
     # Update the mortality for BC (replace with the state 8 in the m.M_8s matrix and state 4 in m.M matrix those who died with BC)
+    # In the rare even of the BC perforation during screening, if this patient meant to die from BC during the same cycle it would be counted as BC death
     m.M_8s[, t+1] <- replace(m.M_8s[, t+1], BC_death_all>0, 8) # If died from BC replace to state 8
     m.M[, t+1] <- replace(m.M[, t+1], m.M_8s[, t+1]==8, 4)
     
@@ -194,7 +199,6 @@ Simulate_NHD <- function(n.i, n.t, pop) {
   
   results <- switch(run_mode, 
                     Testing = list(TR_8 = TR_8, TR_4 = TR_4,m.Diag = m.Diag, m.State=m.State, m.Out=m.Out),
-                    Calibration = list(TR_f = TR_f, TR_m=TR_m, m.Diag = m.Diag),
                     Deterministic = m.Out,
                     PSA= m.Out
                     )

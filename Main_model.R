@@ -18,10 +18,10 @@ library("doRNG")
 set.seed(10)
 
 ###Set up the Global Parameters
-run_mode <- "Deterministic" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag and TR), "Deterministic" (m.Out only), "PSA" (m.Out only)
+run_mode <- "PSA" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag and TR), "Deterministic" (m.Out only), "PSA" (m.Out only)
 cohort <- 1 # 1 = all individuals start model at same age (cohort), 0 = individuals start in model at true (HSE) age
 cohort_age <- 30 #select starting age of cohort (hash out or set to anything if not using cohort)
-n.loops <- 100 # The number of model loops/PSA loops to run 
+n.loops <- 5 # The number of model loops/PSA loops to run 
 cl <- 1  # The cycle length (years) 
 n.t   <- if(cohort==1){100-cohort_age}else{70}  # The number of cycles to run 
 d.c <- 0.035 # The discount rate for costs
@@ -33,13 +33,14 @@ source("Load_all_files.R")
 
 ###Load up all the functions and all the data for use in the model
 ###Set up results collection
-results_no_screen <- results_screen <-list()
+results_no_screen <- results_screen_70 <- results_screen_75 <- list()
 
 # create a list to collect PSA outcomes if the model runs in the PSA mode
 if(run_mode == "PSA"){
-  PSA_results_no_screen <- matrix(0, nrow = 8 * length(out_names), ncol = n.loops)
-  rownames(PSA_results_no_screen) <- rep(out_names, 8)
-  PSA_results_screen <- PSA_results_no_screen
+  n_out = 1 # Add the number of sub populations for which the model is predicting the outcomes
+  PSA_results_no_screen <- matrix(0, nrow = n_out * length(out_names), ncol = n.loops)
+  rownames(PSA_results_no_screen) <- rep(out_names, n_out)
+  PSA_results_screen_70 <- PSA_results_screen_75 <-PSA_results_no_screen
 }
 ### run the model:
 system.time(for(iter in 1:n.loops) {
@@ -56,16 +57,31 @@ m.BC.T.to.Stage <- f.stage(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII,
 
 #calculates relative and absolute risks of cancer onset
 pop <- f.risk.calc(population) 
+pop_ns <- pop_sc_70 <- pop_sc_75 <-pop #copy the population to ensure that individual characteristics remain as in the start
 
 #Set up random number array for each individual
 m.Rand <- f.generate_random()
 
+# Run the model for no screening pop
 DS_screen =0 #Set whether the screening with dipstick happens, 0 - no, 1- yes
-DS_age = 60 #Set the age of the dipstick if screening happens, set to zero if no screening
-results_no_screen[[iter]] = Simulate_NHD(n.i, n.t, pop)
+DS_age = 100 #Set the age of the dipstick if screening happens, set to any if no screening
+results_no_screen[[iter]] = Simulate_NHD(n.i, n.t, pop_ns)
+
+# Run the model for screening pop
+DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
+DS_age = 70 #Set the age of the dipstick if screening happens, set to zero if no screening
+results_screen_70[[iter]] = Simulate_NHD(n.i, n.t, pop_sc_70)
+
+# Run the model for screening pop
+DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
+DS_age = 75 #Set the age of the dipstick if screening happens, set to zero if no screening
+results_screen_75[[iter]] = Simulate_NHD(n.i, n.t, pop_sc_75)
 
 if(run_mode == "PSA"){
   PSA_results_no_screen[, iter] <- rowSums(results_no_screen[[iter]])
+  PSA_results_screen_70[, iter] <- rowSums(results_screen_70[[iter]])
+  PSA_results_screen_75[, iter] <- rowSums(results_screen_75[[iter]])
+  
   #write.table(PSA_results_no_screen,"PSA_results_no_screen.txt")
 }
 
