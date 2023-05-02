@@ -58,9 +58,20 @@ f.DS_screen <- function(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, D
   
   # set n_round as the current screening round
   
-  m.Screen[ ,t+1 , "Invite_DS"] <- (m.Diag[, "LG_diag"] ==0 & m.Diag[, "HG_diag"] ==0 & 
-                                      m.State[, "DeathBC"] ==0 & m.State[, "DeathOC"] ==0 & (pop[, "age"] == DS_age || 
-                                         (pop[, "age"] > DS_age & n_round < DS_round & (DS_freq ==1 | (m.Screen[ ,t, "Invite_DS"]==0 & DS_freq ==2)))))*1
+  # set eligibility by smoking status (considering that smoking status is variable)
+  smoke_eligible <- as.matrix(rep(1, n.i), ncol=1) #set eligibility of the population by their current smoking status on that year
+  if(screen_elig == "c.smoke"){
+    smoke_eligible[pop[ ,"current_smoke"] !=1, ] <- 0
+    }else if(screen_elig == "all.smoke"){
+      smoke_eligible[pop[ ,"current_smoke"] !=1 | pop[ ,"past_smoke"] !=1 , ] <- 0
+    }
+  
+  m.Screen[ ,t+1 , "Invite_DS"] <- (m.Diag[, "LG_diag"] ==0 & m.Diag[, "HG_diag"] ==0 & # population not diagnosed with cancer yet
+                                      m.State[, "DeathBC"] ==0 & m.State[, "DeathOC"] ==0 & # alive population
+                                      smoke_eligible[,1]==1 & #the pop status by their current smoking eligibility
+                                      (pop[, "age"] == DS_age || # for one-time screening, should be equal to the pop age; or the screening start for the repetitive screening
+                                         (pop[, "age"] > DS_age & n_round < DS_round & (DS_freq ==1 | # for annual screening
+                                            (m.Screen[ ,t, "Invite_DS"]==0 & DS_freq ==2)))))*1 # for biennial screening
   
   # Update the number of screen rounds each person received 
   n_round[m.Screen[ ,t+1 , "Invite_DS"]==1] <<- n_round[m.Screen[ ,t+1 , "Invite_DS"]==1]+1

@@ -18,15 +18,19 @@ library("doRNG")
 set.seed(10)
 
 ###Set up the Global Parameters
-run_mode <- "PSA" # Available modes include "Testing" (returns all matrices), "Calibration" (m.Diag and TR), "Deterministic" (m.Out only), "PSA" (m.Out only)
+run_mode <- "PSA" # Available modes include "Testing" (returns all matrices), "Deterministic" (m.Out only), "PSA" (m.Out only)
 cohort <- 1 # 1 = all individuals start model at same age (cohort), 0 = individuals start in model at true (HSE) age
 cohort_age <- 30 #select starting age of cohort (hash out or set to anything if not using cohort)
-n.loops <- 5 # The number of model loops/PSA loops to run 
+n.loops <- 2 # The number of model loops/PSA loops to run 
 cl <- 1  # The cycle length (years) 
 n.t   <- if(cohort==1){100-cohort_age}else{70}  # The number of cycles to run 
 d.c <- 0.035 # The discount rate for costs
 d.e <- 0.035 # The discount rate for effects
 N_sets <- if(run_mode =="PSA"){n.loops}else{1} #Number of parameter sets required (for PSA). Minimum value = 1 (mean parameter values); maximum value = 1651 (number of calibrated correlated param sets)
+
+# Set whether the population needs to be all population, current smokers, or both current and past smokers to be sampled before the model start
+char_pop <- "c.smoke" # c.smoke- current smokers, all.smoke- current and past smokers, all -the whole population
+screen_elig <- "c.smoke" # c.smoke- current smokers, all.smoke- current and past smokers, all -the whole population
 
 ###Load up all the functions and all the data for use in the model
 source("Load_all_files.R")
@@ -69,7 +73,7 @@ results_no_screen[[iter]] = Simulate_NHD(n.i, n.t, pop_ns)
 
 # Run the model for screening pop
 DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
-DS_age = 70 #Set the age of the dipstick if screening happens, set to zero if no screening
+DS_age = 30 #Set the age of the dipstick if screening happens, set to zero if no screening
 DS_round = 3 #' DS_round - number of the screening rounds
 DS_freq =1   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
  
@@ -78,7 +82,9 @@ results_screen_70[[iter]] = Simulate_NHD(n.i, n.t, pop_sc_70)
 
 # Run the model for screening pop
 DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
-DS_age = 75 #Set the age of the dipstick if screening happens, set to zero if no screening
+DS_age = 30 #Set the age of the dipstick if screening happens, set to zero if no screening
+DS_round = 3 #' DS_round - number of the screening rounds
+DS_freq =2   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
 results_screen_75[[iter]] = Simulate_NHD(n.i, n.t, pop_sc_75)
 
 if(run_mode == "PSA"){
@@ -86,12 +92,8 @@ if(run_mode == "PSA"){
   PSA_results_screen_70[, iter] <- rowSums(results_screen_70[[iter]])
   PSA_results_screen_75[, iter] <- rowSums(results_screen_75[[iter]])
   
-  #write.table(PSA_results_no_screen,"PSA_results_no_screen.txt")
-}
 
-#Dipstick_screen =0 #Set whether the screening with dipstick happens, 0 - no, 1- yes
-#Dipstick_age =100 #Set the age of the dipstick if screening happens
-#results_screen[[iter]] = Simulate_NHD(n.i, n.t, pop)
+}
 
 })
 
@@ -107,6 +109,10 @@ if(run_mode == "Deterministic"){
 if(run_mode == "PSA"){
   
   results_no_screen_PSA <- process_PSA_results(results_no_screen, "results_no_screen_PSA.txt")
+  results_no_screen_mean <- rowMeans(PSA_results_no_screen)
+  results_screen_70_mean <- rowMeans(PSA_results_screen_70)
+  results_screen_75_mean <- rowMeans(PSA_results_screen_75)
+  PSA_results <- cbind(results_no_screen_mean, results_screen_70_mean, results_screen_75_mean)
 }
 
 ### COmpare deterministic and PSA, 100 loops
