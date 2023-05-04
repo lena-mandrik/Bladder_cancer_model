@@ -199,8 +199,14 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     
   }
   
+  if(run_mode == "Testing") {
+    cycle <- pop[ ,"age_0"] -30
+    m.M_8s <- cbind(pop[, "PID"],pop[, "age_0"], cycle, m.M_8s)
+    
+  }
+  
   results <- switch(run_mode, 
-                    Testing = list(TR_8 = TR_8, TR_4 = TR_4,m.Diag = m.Diag, m.State=m.State, m.Out=m.Out),
+                    Testing = list(TR_8 = TR_8, TR_4 = TR_4,m.Diag = m.Diag, m.M_8s=m.M_8s, m.M= m.M),
                     Deterministic = m.Out,
                     PSA= m.Out
                     )

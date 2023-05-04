@@ -8,8 +8,20 @@ Params <- as.matrix(read.table("Data/Parameters.txt", header = TRUE, row.names=1
 # Load population data 
 # Population from HSE 2018 is the base case population as the last survey that contains the EQ5D values
 population <- as.matrix(read.table("Data\\population2018.txt", header = TRUE))
-population[,"PID"] <- c(1:length(population[,1]))
 n.i <- nrow(population)  # number of simulated individuals
+
+# if the population consists of current or former smokers, replace the population by sampling
+if(char_pop =="c.smoke"){
+  
+  # Replace the population with the current smokers
+  population <- population[population[ ,"current_smoke"]==1, ][sample(nrow(population[population[ ,"current_smoke"]==1, ]), n.i, replace = TRUE), ]
+
+  } else if(char_pop =="all.smoke"){
+  population <- population[population[ ,"current_smoke"]==1 | population[ ,"past_smoke"]==1, ][sample(nrow(population[population[ ,"current_smoke"]==1 | population[ ,"past_smoke"]==1, ]), n.i, replace = TRUE), ]
+}
+  
+population[,"PID"] <- c(1:length(population[,1]))
+
 
 # Adjust population age if cohort model is chosen
 if(cohort ==1){
