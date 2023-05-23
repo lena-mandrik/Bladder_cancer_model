@@ -1,7 +1,7 @@
 ### Functions to calculate outcomes such as costs and QALYs, which depend upon current health states and age ###
 
 #' @details
-#' This function calculates CRC treatment costs
+#' This function calculates BC treatment costs
 #' @params
 #' m.State: a matrix of current health states for all individuals
 #' m.Diag: a matrix giving diagnostic status for all individuals
@@ -14,11 +14,14 @@ f.calc.cost <- function(m.State, m.Diag, m.Cost.treat){
   
   #Treatment costs in people diagnosed with cancer (up to 5 years after diagnosis) 
   m.cost <- (m.State * m.Cost.treat[paste(m.Diag[, "yr_diag"]), ]) 
-  v.cost <-rowSums(m.cost)
   
-  #Add costs of diagnosis depending on whether screen- or symptomatic diagnosed
-  v.cost.diag <- ifelse((m.Diag[, "HG_screen_diag"]==1|m.Diag[, "LG_screen_diag"]==1) & m.Diag[, "yr_diag"]==1, Cost.diag.screen, Cost.diag.sympt)
-  v.cost[which(m.Diag[, "yr_diag"]==1)] <- v.cost[which(m.Diag[, "yr_diag"]==1)]+v.cost.diag[which(m.Diag[, "yr_diag"]==1)]
+  #Add costs of diagnosis to symptomatically diagnosed only (screen diagnosed are added on a later stage in aggregated outcomes)
+  v.cost.diag <- ifelse((m.Diag[, "HG_sympt_diag"]==1|m.Diag[, "LG_sympt_diag"]==1) & m.Diag[, "yr_diag"]==1, Cost.diag.sympt, 0)
+  
+  # bind the diagnostic costs to treatment costs
+  m.cost <- cbind(m.cost, v.cost.diag)
+    
+  v.cost <-rowSums(m.cost)
   v.cost
 }
 
@@ -85,14 +88,17 @@ f.aggregate.outcomes <- function(m.M_8s, m.Out, m.M, m.E, m.C, m.Diag, m.Screen,
   
   ###Fill outcomes matrix
   
-  #weighted costs of CRC treatment, half cycle corrected
+  #weighted costs of BC treatment, half cycle corrected
   m.Out["BC_COSTS", t+1] <- sum(0.5 * (m.C[, t] + m.C[, t+1]) * pop[, "weighting"]) # total weighted CRC treatment costs
   
   #weighted costs of DT screening (excluding follow-up), half cycle corrected
   m.Out["SCREEN_COSTS", t+1] <- sum(0.5 * ((m.Screen[, t+1, DS_names] %*% m.Cost.screen[DS_names, ]) + (m.Screen[, t, DS_names] %*% m.Cost.screen[DS_names, ])) * pop[, "weighting"]) 
   
+  m.Out["DIAG_COSTS", t+1] <- sum(0.5*((m.Screen[, t+1, "Respond_diag"] * Cost.diag.screen1) + (m.Screen[, t+1, "Respond_Cyst"] * Cost.diag.screen2))+
+                                  0.5*((m.Screen[, t, "Respond_diag"] * Cost.diag.screen1) + (m.Screen[, t, "Respond_Cyst"] * Cost.diag.screen2)))
+  
   #total weighted costs, half cycle corrected
-  m.Out["TOTAL_COSTS", t+1] <- m.Out["BC_COSTS", t+1] + m.Out["SCREEN_COSTS", t+1] 
+  m.Out["TOTAL_COSTS", t+1] <- m.Out["BC_COSTS", t+1] + m.Out["SCREEN_COSTS", t+1] + m.Out["DIAG_COSTS", t+1]
   
   #weighted QALYs and life years, half cycle corrected
   m.Out["QALYS", t+1] <- sum(0.5 * (m.E[, t] + m.E[, t+1]) * pop[, "weighting"]) # total weighted QALYs

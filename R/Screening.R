@@ -9,7 +9,7 @@
 #' @return a matrix of individualised screening parameters
 #' 
 
-f.calc.screen.Params <- function(pop, m.Screen, m.State) {
+f.calc.screen.Params <- function(pop, m.Screen, m.State, test_accuracy, diag_accuracy) {
   
     #Calculates dipstick uptake by personal characteristics
     DS_uptake <- 1/(1+exp(-((cbind((m.State[, "DeathBC"] ==0 & m.State[, "DeathOC"] ==0), pop[,"age"] <55, 
@@ -24,9 +24,12 @@ f.calc.screen.Params <- function(pop, m.Screen, m.State) {
     #Add diagnostic uptake: considered as 1 in the basecase analysis
     Diag_uptake <- rep(Diag.UPTK, n.i)
     
-    scr.Params <- cbind(DS_uptake, DS_diag, Diag_uptake)
+    # Probability to be diagnosed in each state
+    Cystoscopy_diag <- (m.State %*% diag_accuracy[, "Sens"])
     
-    colnames(scr.Params) <- c("DS_uptake", "DS_diag", "Cyst_uptake")
+    scr.Params <- cbind(DS_uptake, DS_diag, Diag_uptake, Cystoscopy_diag)
+    
+    colnames(scr.Params) <- c("DS_uptake", "DS_diag", "Cyst_uptake", "Cyst_diag")
   
     scr.Params
   }
@@ -69,7 +72,7 @@ f.DS_screen <- function(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, D
   m.Screen[ ,t+1 , "Invite_DS"] <- (m.Diag[, "LG_diag"] ==0 & m.Diag[, "HG_diag"] ==0 & # population not diagnosed with cancer yet
                                       m.State[, "DeathBC"] ==0 & m.State[, "DeathOC"] ==0 & # alive population
                                       smoke_eligible[,1]==1 & #the pop status by their current smoking eligibility
-                                      (pop[, "age"] == DS_age || # for one-time screening, should be equal to the pop age; or the screening start for the repetitive screening
+                                      (pop[, "age"] == DS_age | # for one-time screening, should be equal to the pop age; or the screening start for the repetitive screening
                                          (pop[, "age"] > DS_age & n_round < DS_round & (DS_freq ==1 | # for annual screening
                                             (m.Screen[ ,t, "Invite_DS"]==0 & DS_freq ==2)))))*1 # for biennial screening
   
@@ -87,10 +90,10 @@ f.DS_screen <- function(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, D
   m.Screen[ ,t+1 , "Respond_Cyst"] <- (m.Rand[ ,"Respond_Cyst", t] < scr.Params[, "Cyst_uptake"] & m.Screen[ ,t+1 , "Positive_DS"] ==1)*1
                                        
   # Probability to be diagnosed in each state
-  Cystoscopy_diag <- (m.State %*% test_accuracy[, "Sens"])
+  #Cystoscopy_diag <- (m.State %*% diag_accuracy[, "Sens"])
   
   # Decide who is diagnosed through cystoscopy
-  m.Screen[ ,t+1 , "Diagnostic_Cyst"] <- (m.Rand[ ,"Positive_Cyst", t] < Cystoscopy_diag[,1] & m.Screen[ ,t+1 , "Respond_Cyst"]==1)*1
+  m.Screen[ ,t+1 , "Diagnostic_Cyst"] <- (m.Rand[ ,"Positive_Cyst", t] < scr.Params[, "Cyst_diag"] & m.Screen[ ,t+1 , "Respond_Cyst"]==1)*1
   
   # Decide who is diagnosed with  LG and HG tumours
   m.Screen[ ,t+1 , "LG"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & m.State[, "BC_LG"] ==1)*1
@@ -106,10 +109,13 @@ f.DS_screen <- function(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, D
   m.Screen[ ,t+1 , "Die_TURBT"] <- ((m.Rand[ ,"Die_TURBT", t] < Mort.TURBT) & m.Screen[ ,t+1 , "TURBT"]==1)*1
     
   #Decide who had FP (everyone without cancer and FP dipstick and cystoscopy)
-  m.Screen[ ,t+1 , "FP"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & m.State[, "NoBC"] ==1)*1
+  #m.Screen[ ,t+1 , "FP"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & m.State[, "NoBC"] ==1)*1
+  m.Screen[ ,t+1 , "FP"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 &  m.Screen[ ,t+1 , "LG"] !=1 & m.Screen[ ,t+1 , "HG"] !=1)*1
   
   #Decide who had FN (everyone with cancer who hasn't been diagnosed)
-  m.Screen[ ,t+1 , "FN"] <- (m.Screen[ ,t+1 , "TURBT"]==0 & (m.State[, "St1_HG"] ==1 | m.State[, "St2_HG"] ==1 | m.State[, "St3_HG"] ==1 | m.State[, "St4_HG"] ==1))*1
+  m.Screen[ ,t+1 , "FN"] <- (m.Screen[ ,t+1 , "TURBT"]==0 & m.Screen[ ,t+1 , "Respond_DS"] ==1 & (m.State[, "BC_LG"] ==1 |m.State[, "St1_HG"] ==1 | m.State[, "St2_HG"] ==1 | m.State[, "St3_HG"] ==1 | m.State[, "St4_HG"] ==1))*1
+  
+  
   
   m.Screen
   

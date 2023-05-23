@@ -48,7 +48,7 @@ Simulate_NHD <- function(n.i, n.t, pop) {
   #Create additional matrices for subgroup results
   #m.Out_M <- m.Out_F <- m.Out_smoke <- m.Out_past.smoke <- m.Out
   
-  n_round <<- rep(0, n.i) # Set the number of screening rounds counts as zero before the cycles
+  n_round <<- rep(0, n.i) # Set the number of screening rounds each person receives; counts as zero before the cycles
   
   # loop to run the model over time
   for(t in 1:n.t) {
@@ -78,7 +78,8 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     # Record the characteristics of onset for LG cancer
     m.Diag[, "LG_state"][which(new_LG)] <- 1
     m.Diag[, "LG_age_onset"] <- m.Diag[, "LG_age_onset"] + (pop[, "age"] * new_LG) 
-
+    #m.Diag[, "LG_yr_onset"] <- m.Diag[, "LG_yr_onset"] + new_LG
+    
     # Update m.M_8s matrix with the states for those who have HG cancer
     m.M_8s[, t+1] <- m.M[, t+1]
     m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t] ==8, 8) #Replace with BC death those who died with BC before this cycle
@@ -103,7 +104,7 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     
     # Screening detection
     if(DS_screen ==1){
-      scr.Params <- f.calc.screen.Params(pop, m.Screen, m.State)
+      scr.Params <- f.calc.screen.Params(pop, m.Screen, m.State, test_accuracy, diag_accuracy)
       m.Screen <- f.DS_screen(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, DS_age, DS_round, DS_freq, n_round)
       m.Diag <- f.screen_diag(m.Screen, m.State, m.Diag, pop, t)
       # Replace with death for those who died from perforation during TURBT

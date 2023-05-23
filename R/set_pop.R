@@ -51,3 +51,35 @@ f.smoke.change <- function(pop, rand.quit) {
  pop[,"past_smoke"] <- replace(pop[,"past_smoke"], pop[,"no_smoke"]==0 & pop[,"past_smoke"]==0 & quit_smoke ==1, 1)
  pop
 }
+
+
+########################################################
+set_population <- function(population) {
+  
+  if(cohort ==0){ #if cohort ==0, individuals start in model at true (HSE) age
+    
+    
+# Re-assign the weights if the population of a specific age range is selected 
+    
+    weights_England <- as.matrix(population[ ,"weighting"], ncol=1)
+    weights_England[,1] <- replace(weights_England[,1], population[ ,"age_0"]> max_age | population[ ,"age_0"]< min_age, 0)
+
+# Sample according to the desired sample size
+    samp_idx <- sample(seq_len(nrow(population)), nsample, replace = TRUE, prob=weights_England[,1])
+    new_population <- population[samp_idx, ]
+    state <- rep(0, nsample)
+    p.States <- states_pop[new_population[,"PID"], ]
+
+    for(i in 1:nsample) {
+      x <-colnames(p.States)
+      state[i] <- as.numeric(sample(x, size=1, replace = T, prob = p.States[i,]))
+    }
+    
+    state <- replace(state, state==9, 8) # assign those with the diagnosed cancer as "dead" (ie exclude from costs /benefits calculation)
+    new_population <- cbind(new_population, state) 
+    # Exclude population with diagnosed cancer by assigning them to the dead state (8)
+    pop <- f.risk.calc(new_population) } else{
+      pop <- f.risk.calc(population)
+    }
+  pop
+    }

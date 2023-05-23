@@ -25,16 +25,18 @@ f.calc.indiv.TPs <- function(pop, m.Diag){
   
   # Add individual TP for LG to HG cancer based on whether a patient has been diagnosed or not 
   # LG cancers currently don't progress to HG cancers if they are detected unless the period of surveillance passed (2y) in which case they are considered as recurrent LG progressed to HG
-  TP.LGtoHGBC <- as.matrix(rep(0, n.i), ncol=1) 
+  TP.LGtoHGBC <- as.matrix(rep(0, nsample), ncol=1) 
   TP.LGtoHGBC[,1] <- replace(TP.LGtoHGBC[,1], m.Diag[ ,"LG_diag"]==0, P.LGtoHGBC) # set probability for those who hasn't been diagnosed yet
   TP.LGtoHGBC[,1] <- replace(TP.LGtoHGBC[,1], m.Diag[ ,"LG_diag"]==1 & (pop[,"age"]-m.Diag[ ,"LG_age_diag"])>1, P.LGtoHGBC*P.Recurrence.LR) # set probability of recurrence and progression to HG for those who were diagnosed, after 1 year of surveillance when the p is assumed to be zero
   
   TP <- cbind(TP.OC, TP.BCLG, TP.BCHG, TP.LGtoHGBC)
   colnames(TP) <- c("TP.OC", "TP.BCLG", "TP.BCHG", "TP.LGtoHGBC")
   
-  limit.age <- pop[,"age"] >= 100
-  TP[limit.age, c("TP.OC", "TP.BCLG", "TP.BCHG", "TP.LGtoHGBC")] <- c(1,0,0,0)
-
+  #limit.age <- pop[,"age"] >= 100
+  #TP[pop[,"age"] >= 100, c("TP.OC", "TP.BCLG", "TP.BCHG", "TP.LGtoHGBC")] <- c(1,0,0,0)
+  TP[pop[,"age"] >= 100, "TP.OC"] <- 1
+  TP[pop[,"age"] >= 100, c("TP.BCLG", "TP.BCHG", "TP.LGtoHGBC")] <- 0
+  
   TP
 }
 
@@ -83,26 +85,26 @@ f.Probs <- function(m.M, TP) {
   # M_it:    health state occupied by individual i at cycle t (character variable) 
   
   
-  a.p.it <- array(data = NA, dim = c(n.i, n.s, n.s)) # create array of state transition probabilities   
+  a.p.it <- array(data = NA, dim = c(nsample, n.s, n.s)) # create array of state transition probabilities   
   
   # update m.p.it with the appropriate probabilities (for now there is no probability to die from BC except you are in Clinical state)
   
-  a.p.it[, 1,]  <- matrix(nrow = n.i, ncol = n.s, c(1 - TP[, "TP.BCLG"]- TP[, "TP.BCHG"] - TP[, "TP.OC"], TP[, "TP.BCLG"], TP[, "TP.BCHG"], TP[, "TP.OC"]))
+  a.p.it[, 1,]  <- matrix(nrow = nsample, ncol = n.s, c(1 - TP[, "TP.BCLG"]- TP[, "TP.BCHG"] - TP[, "TP.OC"], TP[, "TP.BCLG"], TP[, "TP.BCHG"], TP[, "TP.OC"]))
   # Transition probabilities in the state No cancer (STATE 1)
   
-  a.p.it[, 2,]  <- matrix(nrow = n.i, ncol = n.s, c(rep(0, n.i), 1 - TP[, "TP.LGtoHGBC"] - TP[, "TP.OC"], TP[, "TP.LGtoHGBC"], TP[, "TP.OC"]))
+  a.p.it[, 2,]  <- matrix(nrow = nsample, ncol = n.s, c(rep(0, nsample), 1 - TP[, "TP.LGtoHGBC"] - TP[, "TP.OC"], TP[, "TP.LGtoHGBC"], TP[, "TP.OC"]))
   # Transition probabilities in the state low grade bladder cancer (STATE 2)
   
-  a.p.it[, 3,]   <- matrix(nrow = n.i, ncol = n.s, c(rep(0,n.i*2), 1 - TP[, "TP.OC"], TP[, "TP.OC"]))     
+  a.p.it[, 3,]   <- matrix(nrow = nsample, ncol = n.s, c(rep(0,nsample*2), 1 - TP[, "TP.OC"], TP[, "TP.OC"]))     
   # Transition probabilities in the state high grade bladder cancer (sTATE 3)
   
-  a.p.it[, 4,]   <- matrix(nrow = n.i, ncol = n.s,  c(rep(0,3),1), byrow = TRUE)
+  a.p.it[, 4,]   <- matrix(nrow = nsample, ncol = n.s,  c(rep(0,3),1), byrow = TRUE)
   # Transition probabilities in the state mortality
   
   # Add to the TP sampling of the time to the next stage and allocation of the stages for everyone who has cancer onset
   
-  m.p.it <- matrix(NA, nrow = n.i, ncol = n.s)
-  for (i in 1:n.i){
+  m.p.it <- matrix(NA, nrow = nsample, ncol = n.s)
+  for (i in 1:nsample){
     m.p.it[i,] <- a.p.it[i, m.M[i], ]
   }
   
@@ -126,7 +128,7 @@ f.samplev <- function (m.p, m.Rand, t) {
   if (any((U[n.s, ] - 1) > 1e-05))
     stop("error in multinom: probabilities do not sum to 1")
   
-  rand <- rep(m.Rand[, "PROBS", t], rep(n.s, n.i))
+  rand <- rep(m.Rand[, "PROBS", t], rep(n.s, nsample))
   new <- lev[1 + colSums(rand > U)]
   
   new
@@ -142,9 +144,9 @@ f.samplev <- function (m.p, m.Rand, t) {
 #' @return updated m.Diag matrix
 #' 
 #
-f.recurrence.LGBC <- function(m.Diag, n.i, t, P.Recurrence.LR){
+f.recurrence.LGBC <- function(m.Diag, nsample, t, P.Recurrence.LR){
   
-  TP.BCLG_recurrence <- rep(0, n.i)
+  TP.BCLG_recurrence <- rep(0, nsample)
   TP.BCLG_recurrence <- replace(TP.BCLG_recurrence, m.Diag[ ,"LG_BC_diag"]==1, P.Recurrence.LR)
   m.Diag[, "LG_BC_n"] <- m.Diag[, "LG_BC_n"] + 1*(m.Rand[ ,"BCLG_recurrence", t] < TP.BCLG_recurrence)
   

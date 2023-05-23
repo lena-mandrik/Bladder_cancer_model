@@ -84,3 +84,22 @@ f.states.prob <- function(list_results){
 
 pop_prob <- f.states.prob(results_no_screen)
 
+
+# adjust the probabilities to ignore the probability to die (since everyone in the HSE is alive)
+
+states_pop <- as.matrix(read.table("Data\\probabilities_of_states.txt", header = TRUE))
+colnames(states_pop) <- c(states_long, "diagnosed")
+
+no_BC <- rowSums(cbind(states_pop[,"NoBC"],states_pop[,"DeathOC"]))
+diagnosed <- rowSums(cbind(states_pop[,"DeathBC"],states_pop[,"diagnosed"]))
+
+# replace with the probabilities combined for those who died from BC and other causes
+
+states_pop[ ,"NoBC"] = no_BC
+states_pop[ ,"DeathOC"] = 0
+states_pop[ ,"DeathBC"] = 0
+states_pop[ ,"diagnosed"] = diagnosed
+#states_pop[is.na(states_pop[ ,"NoBC"]),"NoBC"] <-1
+#states_pop[is.na(states_pop[ ,"BC_LG"]),2:9] <-0
+
+write.table(states_pop, "Data\\states_pop.txt", col.names=T)

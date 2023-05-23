@@ -57,8 +57,7 @@ f.symptom <- function(m.Diag, m.State, m.Rand, pop, t, m.M) {
   m.Diag[ , "LG_diag"] <- m.Diag[ , "LG_diag"] + m.Diag[, "LG_new_diag"]
   m.Diag[ , "LG_age_diag"] <- m.Diag[, "LG_age_diag"] + (pop[, "age"] * m.Diag[, "LG_new_diag"])
   m.Diag[, "LG_sympt_diag"] <- m.Diag[, "LG_sympt_diag"] + m.Diag[, "LG_new_diag"]
-  m.Diag[, "LG_age_diag"] <- m.Diag[, "LG_age_diag"] + (pop[, "age"] * m.Diag[, "LG_new_diag"])
-  
+
   m.Diag[, "yr_diag"] = m.Diag[, "LG_yr_diag"]
   m.Diag[, "yr_diag"] = replace(m.Diag[, "yr_diag"], m.Diag[, "HG_diag"] >0, m.Diag[m.Diag[, "HG_diag"] >0, "HG_yr_diag"])
   

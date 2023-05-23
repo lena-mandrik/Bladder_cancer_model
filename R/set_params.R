@@ -4,11 +4,11 @@
 #' This function uses the mean and the shape to calculate the scale and sample from the Weibull distribution 
 
 
-f.Weibull.sample <- function(w_mean, shape, n.i){
+f.Weibull.sample <- function(w_mean, shape, nsample){
   
   scale = w_mean/gamma(1+1/shape)
   
-  time_to_state <- rweibull(n.i, shape, scale)
+  time_to_state <- rweibull(nsample, shape, scale)
   
   time_to_state
   
@@ -22,11 +22,11 @@ f.Weibull.sample <- function(w_mean, shape, n.i){
 #' @return matrix of transition probabilities for each individual
 
 f.stage <- function(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.t.StII.StIII, 
-                    Mean.t.StIII.StIV, shape.t.StIII.StIV, n.i){
+                    Mean.t.StIII.StIV, shape.t.StIII.StIV, nsample){
   
-  T.onsetToStage2 <- f.Weibull.sample(Mean.t.StI.StII, shape.t.StI.StII, n.i)
-  T.Stage3 <- f.Weibull.sample(Mean.t.StII.StIII, shape.t.StII.StIII, n.i)
-  T.Stage4 <- f.Weibull.sample(Mean.t.StIII.StIV, shape.t.StIII.StIV, n.i)
+  T.onsetToStage2 <- f.Weibull.sample(Mean.t.StI.StII, shape.t.StI.StII, nsample)
+  T.Stage3 <- f.Weibull.sample(Mean.t.StII.StIII, shape.t.StII.StIII, nsample)
+  T.Stage4 <- f.Weibull.sample(Mean.t.StIII.StIV, shape.t.StIII.StIV, nsample)
   
   T.onsetToStage3 <- T.onsetToStage2+T.Stage3
   T.onsetToStage4 <- T.onsetToStage3+T.Stage4
@@ -80,18 +80,24 @@ f.set_parameters <- function(p.set) {
                      rep(Param_sets[p.set, "Sens.dipstick.St2.4"],3), #stages 2-4
                      0), ncol=1) # Death BC
                      
-
+  #Set the parameters for the diagnostic accuracy of US +cytology (assumed to be the same for all HG cancers)               
+  diag1_accuracy <- as.matrix(c((1-Param_sets[p.set, "Spec.joined.diag"]), #for no cancer
+                                Param_sets[p.set, "Sens.joined.diag.LG"], #LG state
+                                Param_sets[p.set, "Sens.joined.diag.HG"], #stage 1
+                                0, # Death OC
+                                rep(Param_sets[p.set, "Sens.joined.diag.HG"],3), #stages 2-4
+                                0), ncol=1) # Death BC
   
   #Set the parameters for the diagnostic accuracy of flexible cystoscopy (assumed to be the same for all HG cancers)               
-  diag_accuracy <- as.matrix(c((1-Param_sets[p.set, "Spec.cystoscopy"]), #for no cancer
+  diag2_accuracy <- as.matrix(c((1-Param_sets[p.set, "Spec.cystoscopy"]), #for no cancer
                                Param_sets[p.set, "Sens.cystoscopy.LG"], #LG state
                                Param_sets[p.set, "Sens.cystoscopy.HG"], #stage 1
                               0, # Death OC
                              rep(Param_sets[p.set, "Sens.cystoscopy.HG"],3), #stages 2-4
                                0), ncol=1) # Death BC  
   
-  rownames(test_accuracy)  <- rownames(diag_accuracy)  <- states_long
-  colnames(test_accuracy) <- colnames(diag_accuracy) <-"Sens"
+  rownames(test_accuracy)  <- rownames(diag1_accuracy)  <- rownames(diag2_accuracy)  <- states_long
+  colnames(test_accuracy) <- colnames(diag1_accuracy) <-colnames(diag2_accuracy) <-"Sens"
   
   # Set harms: mortality due to TURBT                  
   Mort.TURBT <- Param_sets[p.set, "Mort.TURBT"]
@@ -103,9 +109,9 @@ f.set_parameters <- function(p.set) {
   Disutility.LG <- Param_sets[p.set, "Disutility.LG"]
   
   # Set costs of diagnosis and screening
-  
   Cost.diag.sympt <- Param_sets[p.set, "Cost.diag.sympt"]
-  Cost.diag.screen <- Param_sets[p.set, "Cost.diag.screen"]
+  Cost.diag.screen1 <- Param_sets[p.set, "Cost.diag.screen1"]
+  Cost.diag.screen2 <- Param_sets[p.set, "Cost.diag.screen2"]
   
   # Create Cost matrix summarising the cost parameters for each screening process
   m.Cost.screen <- as.matrix(c(Param_sets[p.set, "Cost.ad.dipstick"],
@@ -115,7 +121,7 @@ f.set_parameters <- function(p.set) {
   DS_names <-rownames(m.Cost.screen) <- c("Invite_DS","Respond_DS", "Positive_DS")
   
   # Create matrix summarising the screening process
-  screen_names <- c("Invite_DS","Respond_DS", "Positive_DS", "Respond_Cyst", "Diagnostic_Cyst", "TURBT",
+  screen_names <- c("Invite_DS","Respond_DS", "Positive_DS","Respond_diag", "Positive_diag", "Respond_Cyst", "Diagnostic_Cyst", "TURBT",
                     "Next_Surv", 
                     "Die_TURBT", "FP", "FN",
                     "HG", "LG")
@@ -156,7 +162,8 @@ f.set_parameters <- function(p.set) {
   
   # Set matrix for screening and diagnostic costs
   m.scr.diag.costs <- as.matrix(c(Param_sets[p.set, "Cost.diag.sympt"],
-                                Param_sets[p.set, "Cost.diag.screen"],
+                                Param_sets[p.set, "Cost.diag.screen1"],
+                                Param_sets[p.set, "Cost.diag.screen2"],
                                 Param_sets[p.set, "Cost.dipstick.invite"],
                                 Param_sets[p.set, "Cost.ad.dipstick"],
                                 Param_sets[p.set, "Cost.dipstick.positive"],
@@ -233,6 +240,7 @@ f.generate_parameters <- function(Params, N_sets){
 #' @params
 #' @return an array of random numbers for each event, person and time cycle
 f.generate_random <- function() {
-  events <- c("PROBS", "Smoke_quit", "BCLG_recurrence", "SYMPT_HG", "SYMPT_LG","Death_BC", "Respond_DS", "Positive_DS", "Respond_Cyst", "Positive_Cyst", "Die_TURBT")
-  array(runif(n.i * length(events) * n.t), dim = c(n.i, length(events), n.t), dimnames = list(NULL, events, NULL))
+  events <- c("PROBS", "Smoke_quit", "BCLG_recurrence", "SYMPT_HG", "SYMPT_LG","Death_BC", "Respond_DS", "Positive_DS", 
+              "Respond_diag", "Positive_diag", "Respond_Cyst", "Positive_Cyst", "Die_TURBT")
+  array(runif(nsample * length(events) * n.t), dim = c(nsample, length(events), n.t), dimnames = list(NULL, events, NULL))
 } 
