@@ -44,9 +44,9 @@ f.calc.utility <- function(m.State, m.Diag, pop, t) {
   v.utility <- pop[, "EQ5D"] - (Utility.age * (pop[, "age"] - pop[, "age_0"]))
   
   # Mark those individuals with the diagnosed disease
-  LG_u <- (m.Diag[, "LG_yr_diag"] >0 & m.Diag[, "LG_yr_diag"] <3)*1 # Impact on utilities for LG cancers is during 3 years
-  HG_1.3_u <- (m.Diag[, "HG_yr_diag"] >0 & m.Diag[, "HG_yr_diag"] <5 & (m.State[,"St1_HG"] ==1 |m.State[,"St2_HG"] ==1 | m.State[,"St3_HG"] ==1))*1 # Impact on utilities for HG cancers is during 5 years
-  HG_4_u <- (m.Diag[, "HG_yr_diag"] >0 & m.Diag[, "HG_yr_diag"] <5 & m.State[,"St4_HG"] ==1)*1 # Impact on utilities for HG cancers is during 5 years
+  LG_u <- (m.Diag[, "LG_yr_diag"] >0 & m.Diag[, "LG_yr_diag"] <=3 & m.State[,"BC_LG"] ==1)*1 # Impact on utilities for LG cancers is during 3 years
+  HG_1.3_u <- (m.Diag[, "HG_yr_diag"] >0 & m.Diag[, "HG_yr_diag"] <=5 & (m.State[,"St1_HG"] ==1 |m.State[,"St2_HG"] ==1 | m.State[,"St3_HG"] ==1))*1 # Impact on utilities for HG cancers is during 5 years
+  HG_4_u <- (m.Diag[, "HG_yr_diag"] >0 & m.Diag[, "HG_yr_diag"] <=5 & m.State[,"St4_HG"] ==1)*1 # Impact on utilities for HG cancers is during 5 years
   
   # Assign disutility for each diagnosed state
   disutility_BC <- LG_u*Disutility.LG + HG_1.3_u*Disutility.HG.St1.3 + HG_4_u*Disutility.HG.St4

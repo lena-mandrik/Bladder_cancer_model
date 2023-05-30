@@ -9,22 +9,18 @@
 #' @return an updated current diagnostic information matrix
 
 
-f.symptom <- function(m.Diag, m.State, m.Rand, pop, t, m.M) {
+f.symptom <- function(m.Diag, m.State, m.Rand, pop, t, m.M, elig_time) {
   
-  #Reset newly diagnosed and move year of diagnosis on by one
-  m.Diag[, "HG_new_diag"] <- m.Diag[, "LG_new_diag"] <-0
-  m.Diag[, "HG_yr_diag"][m.Diag[, "HG_yr_diag"] >=1] <- m.Diag[, "HG_yr_diag"][m.Diag[, "HG_yr_diag"] >=1] + 1
-  m.Diag[, "LG_yr_diag"][m.Diag[, "LG_yr_diag"] >=1] <- m.Diag[, "LG_yr_diag"][m.Diag[, "LG_yr_diag"] >=1] + 1
-  
+ 
   #Specify who is eligible for diagnosis of those still alive (those not yet diagnosed)
-  elig_HG <- m.Diag[, "HG_diag"] ==0 & m.M[ ,t+1] ==3 # for HG cancer
-  elig_LG <- m.Diag[, "LG_diag"]==0 & m.M[ ,t+1]==2 # for LG cancer
+  elig_HG <- m.Diag[, "HG_diag"] ==0 & m.M[ ,t+1] ==3 &  elig_time ==1# for HG cancer
+  elig_LG <- m.Diag[, "LG_diag"]==0 & m.M[ ,t+1]==2 &  elig_time ==1 # for LG cancer
   
   # Probability to become symptomatic patient
   # Returns an annual probability to be diagnosed by time of cancer onset if a person has cancer
   
   # Update for those who are older than 70 with the age parameter for a symptomatic presentation rate for HGBC
-  age_sympt <- cbind(pop[, "age"],rep(1, n.i), rep(1, n.i))
+  age_sympt <- cbind(pop[, "age"],rep(1, nsample), rep(1, nsample))
   age_sympt[,2][age_sympt[,1]>=67] <- age_sympt[,2][age_sympt[,1]>=67]*(P.sympt.diag_Age_HGBC^(age_sympt[,1][age_sympt[,1]>=67]- 67))
   
   # risk to become symptomaticis calculated from two calibrated parameters - P.sympt.diag_HGBC and P.sympt.diag_t_HGBC.

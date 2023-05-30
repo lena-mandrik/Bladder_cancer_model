@@ -240,7 +240,7 @@ f.generate_parameters <- function(Params, N_sets){
 #' @params
 #' @return an array of random numbers for each event, person and time cycle
 f.generate_random <- function() {
-  events <- c("PROBS", "Smoke_quit", "BCLG_recurrence", "SYMPT_HG", "SYMPT_LG","Death_BC", "Respond_DS", "Positive_DS", 
+  events <- c("Screen_time", "PROBS", "Smoke_quit", "BCLG_recurrence", "SYMPT_HG", "SYMPT_LG","Death_BC", "Respond_DS", "Positive_DS", 
               "Respond_diag", "Positive_diag", "Respond_Cyst", "Positive_Cyst", "Die_TURBT")
   array(runif(nsample * length(events) * n.t), dim = c(nsample, length(events), n.t), dimnames = list(NULL, events, NULL))
 } 

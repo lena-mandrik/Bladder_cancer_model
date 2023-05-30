@@ -46,10 +46,11 @@ f.risk.calc <- function(pop) {
 
 f.smoke.change <- function(pop, rand.quit) {
   # Update smoking status, considering the proportion of smokers who quite smoking during one year
- quit_smoke <- 1*((rand.quit < P.quit.smoke) & pop[,"current_smoke"]==1)
- pop[,"current_smoke"] <- replace(pop[,"current_smoke"],quit_smoke ==1, 0)
- pop[,"past_smoke"] <- replace(pop[,"past_smoke"], pop[,"no_smoke"]==0 & pop[,"past_smoke"]==0 & quit_smoke ==1, 1)
- pop
+    quit_smoke <- 1*((rand.quit < P.quit.smoke) & pop[,"current_smoke"]==1)
+    pop[,"current_smoke"] <- replace(pop[,"current_smoke"],quit_smoke ==1, 0)
+    pop[,"past_smoke"] <- replace(pop[,"past_smoke"], pop[,"no_smoke"]==0 & pop[,"past_smoke"]==0 & quit_smoke ==1, 1)
+    return(pop)
+
 }
 
 
@@ -75,7 +76,7 @@ set_population <- function(population) {
       state[i] <- as.numeric(sample(x, size=1, replace = T, prob = p.States[i,]))
     }
     
-    state <- replace(state, state==9, 8) # assign those with the diagnosed cancer as "dead" (ie exclude from costs /benefits calculation)
+    state <- replace(state, state==9, 4) # assign those with the diagnosed cancer as "dead" (ie exclude from costs /benefits calculation)
     new_population <- cbind(new_population, state) 
     # Exclude population with diagnosed cancer by assigning them to the dead state (8)
     pop <- f.risk.calc(new_population) } else{

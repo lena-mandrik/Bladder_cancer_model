@@ -1,9 +1,9 @@
 ### Function to run the simulation ###
 
-Simulate_NHD <- function(n.i, n.t, pop) { 
+Simulate_NHD <- function(nsample, n.t, pop) { 
   
   # Arguments:     
-  # n.i:     number of individuals; Global parameters, Master script
+  # nsample:     number of individuals simulated; Global parameters, Master script
   # n.t:     total number of cycles to run the model; Global parameters, Master script   
   # pop:     matrix of individual level population attributes
   # Makes use of:   
@@ -12,32 +12,41 @@ Simulate_NHD <- function(n.i, n.t, pop) {
   # Effs:    function for the estimation of state specific health outcomes (QALYs) (script "Functions")   
   
   # create matrices capturing the state name/costs/health outcomes for all individuals at each time point 
-  m.M <- m.M_8s <-m.C <- m.E <-  matrix(nrow = n.i, ncol = n.t + 1)
+  m.M <- m.M_8s <-m.C <- m.E <-  matrix(nrow = nsample, ncol = n.t + 1)
   
-  m.M[, 1] <- m.M_8s[, 1] <- rep(1, n.i)   # indicate the initial health state
+  # initial state is 1 if 30-yo cohort is run and actual state saved in pop matrix if HSE population is used
+  if(cohort==1){
+    m.M[, 1] <- m.M_8s[, 1] <- rep(1, nsample)   # indicate the initial health state
+  } else if (cohort==0) {
+    m.M_8s[, 1] <- m.M[, 1] <- pop[ ,"state"] #if the current pop in England is used, assign the first health state as the current state
+    m.M[m.M[, 1]>2 & m.M[, 1] !=4, 1] <- 3 # replace in the short matrix the states for undiagnosed HG cancer as state 3 (all HG BC). The diagnosed HG cancer will be gathered in "DeathOC" state
+    
+    }
+  
   m.C[, 1] <- 0 # estimate costs per individual for the initial health state 
   m.E[, 1] <- pop[, "EQ5D"] - (Utility.age * (pop[, "age"] - pop[, "age_0"])) # estimate QALY per individual for the initial health state and starting age
   m.E[, 1] <- replace(m.E[, 1], m.E[, 1] >1, 1) # if EQ-5D over 1 reset to 1
   m.E[, 1] <- replace(m.E[, 1], m.E[, 1] <=(-0.594), -0.594) # if EQ-5D under -0.594 reset to -0.594
   
   # create another matrix capturing the current health state for each individual
-  m.State <- matrix(0, nrow = n.i, ncol = n.s_long)
+  m.State <- matrix(0, nrow = nsample, ncol = n.s_long)
   colnames(m.State) <- states_long
   for(n in 1:n.s) {
     m.State[, n] <- replace(m.State[, n], m.M[, 1] ==n, 1)
   }
   
   #Create another matrix for current diagnostic information
-  m.Diag <- matrix(0, nrow = n.i, ncol = 20)
+  m.Diag <- matrix(0, nrow = nsample, ncol = 21)
   
   # When BC said, it means HG
 
- colnames(m.Diag) <- c("HG_state", "LG_state", "HG_diag", "LG_diag", "HG_age_diag", "LG_age_diag", "HG_sympt_diag", "LG_sympt_diag", "HG_screen_diag", "LG_screen_diag", "HG_new_diag", "LG_new_diag",
+ colnames(m.Diag) <- c("HG_state", "LG_state", "HG_diag", "LG_diag", "HG_age_diag", "LG_age_diag", "HG_sympt_diag", 
+                       "LG_sympt_diag", "HG_screen_diag", "LG_screen_diag", "FP", "HG_new_diag", "LG_new_diag",
    "HG_stage_diag", "yr_diag", "HG_yr_diag", "LG_yr_diag", "HG_yr_onset", "HG_age_onset", "LG_age_onset", "age_BC_death")
   
   
   # Create an array to gather screening and surveillance information for each cycle
-  m.Screen <- array(data = 0, dim = c(n.i, n.t + 1, length(screen_names)))
+  m.Screen <- array(data = 0, dim = c(nsample, n.t + 1, length(screen_names)))
   dimnames(m.Screen)[[3]] <- screen_names # note that this is defined in set_params
   
   #Create a matrix for gathering aggregate outcomes
@@ -48,7 +57,7 @@ Simulate_NHD <- function(n.i, n.t, pop) {
   #Create additional matrices for subgroup results
   #m.Out_M <- m.Out_F <- m.Out_smoke <- m.Out_past.smoke <- m.Out
   
-  n_round <<- rep(0, n.i) # Set the number of screening rounds each person receives; counts as zero before the cycles
+  n_round <<- rep(0, nsample) # Set the number of screening rounds each person receives; counts as zero before the cycles
   
   # loop to run the model over time
   for(t in 1:n.t) {
@@ -99,12 +108,19 @@ Simulate_NHD <- function(n.i, n.t, pop) {
       m.State[, n] <- replace(m.State[, n], m.M_8s[, t+1] ==n, 1)
     }
     
+   
     #Symptomatic detection
-    m.Diag <- f.symptom(m.Diag, m.State, m.Rand, pop, t, m.M) 
+    if(DS_screen ==1){elig_time <- as.matrix(1*(m.Rand[,"Screen_time", t] <= 0.5), ncol=1)} else {elig_time <- as.matrix(rep(1,nsample), ncol=1)}  # Run symptomatic mode for those with m.Rand < 0.5 (half of the people) to ensure equal impact of screen and sympt pathways
+    #Reset newly diagnosed and move year of diagnosis on by one
+    m.Diag[, "HG_new_diag"] <- m.Diag[, "LG_new_diag"] <-0
+    m.Diag[, "HG_yr_diag"][m.Diag[m.M[,t] !=4, "HG_yr_diag"] >=1] <- m.Diag[, "HG_yr_diag"][m.Diag[m.M[,t] !=4, "HG_yr_diag"] >=1] + 1
+    m.Diag[, "LG_yr_diag"][m.Diag[m.M[,t] !=4, "LG_yr_diag"] >=1] <- m.Diag[, "LG_yr_diag"][m.Diag[m.M[,t] !=4, "LG_yr_diag"] >=1] + 1
+    
+    m.Diag <- f.symptom(m.Diag, m.State, m.Rand, pop, t, m.M, elig_time) 
     
     # Screening detection
     if(DS_screen ==1){
-      scr.Params <- f.calc.screen.Params(pop, m.Screen, m.State, test_accuracy, diag_accuracy)
+      scr.Params <- f.calc.screen.Params(pop, m.Screen, m.State, test_accuracy, diag1_accuracy, diag2_accuracy)
       m.Screen <- f.DS_screen(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, DS_age, DS_round, DS_freq, n_round)
       m.Diag <- f.screen_diag(m.Screen, m.State, m.Diag, pop, t)
       # Replace with death for those who died from perforation during TURBT
@@ -113,6 +129,11 @@ Simulate_NHD <- function(n.i, n.t, pop) {
       # Not sure whether I need to return to no cancer everyone in the end of the 10 year time period
     }
   
+    if(DS_screen ==1){
+      elig_time <- as.matrix(1*(m.Rand[,"Screen_time", t] > 0.5), ncol=1)
+      m.Diag <- f.symptom(m.Diag, m.State, m.Rand, pop, t, m.M, elig_time)
+    }
+    
     # define BC deaths
     TP_BC.mort <- f.calc.BCmort.TP(pop, m.Diag)
     new_BC1_death <- 1*((m.Rand[ ,"Death_BC", t] < TP_BC.mort[,"TP.BC.1.mort"]) & m.State[ ,"St1_HG"]>0)
@@ -139,9 +160,15 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     # Update the age for only those individuals who are alive
     IND <- m.M[, t+1] != 4
     pop[IND, "age"] <- pop[IND,"age"] +1 # update the age
+    
+    ncol_pop <- ncol(pop)
     rand.quit <- m.Rand[ ,"Smoke_quit", t]
+    
+    if(!is.null(dim(pop[IND, ]))) {
     pop[IND, ] <- f.smoke.change(pop[IND, ], rand.quit[IND])  # update smoking status
     pop[IND, ] <- f.risk.calc(pop[IND, ]) #update the risk of BC and p of onset of BC
+    
+    }
     
   }#this is a loop for the time point
   
@@ -149,16 +176,16 @@ Simulate_NHD <- function(n.i, n.t, pop) {
   # Extract the matrices for technical validity
   if(run_mode == "Testing") { # Create a matrix of transitions across states
     TS_8 <- paste(m.M_8s, cbind(m.M_8s[, -1], NA), sep = "->") # transitions from one state to the other     
-    TS_8 <- matrix(TS_8, nrow = n.i)
+    TS_8 <- matrix(TS_8, nrow = nsample)
     TS_4 <- paste(m.M, cbind(m.M[, -1], NA), sep = "->") # transitions from one state to the other     
-    TS_4 <- matrix(TS_4, nrow = n.i)
-    rownames(TS_8) <- rownames(TS_4) <-paste("Ind",   1:n.i, sep = " ")   # name the rows      
+    TS_4 <- matrix(TS_4, nrow = nsample)
+    rownames(TS_8) <- rownames(TS_4) <-paste("Ind",   1:nsample, sep = " ")   # name the rows      
     colnames(TS_8) <- colnames(TS_4) <-paste("Cycle", 0:n.t, sep = " ")   # name the columns    
   
     TR_8 <- t(apply(m.M_8s, 2, function(x) table(factor(x, levels = v.n_long, ordered = TRUE))))     
-    TR_8 <- TR_8 / n.i    # create a distribution trace
+    TR_8 <- TR_8 / nsample    # create a distribution trace
     TR_4 <- t(apply(m.M, 2, function(x) table(factor(x, levels = v.n, ordered = TRUE))))     
-    TR_4 <- TR_4 / n.i    # create a distribution trace
+    TR_4 <- TR_4 / nsample    # create a distribution trace
     
     rownames(TR_8) <- rownames(TR_4) <-paste("Cycle", 0:n.t, sep = " ")  # name the rows
     colnames(TR_8) <- v.n_long     # name the columns    
@@ -175,7 +202,7 @@ Simulate_NHD <- function(n.i, n.t, pop) {
     m.Diag <- cbind(m.Diag, pop[ ,"sex"], pop[ ,"age_0"])
     colnames(m.Diag) <-names_Diag
     
-    a.Temp <- array(data = NA, dim = c(n.i, n.t+1, n.s_long))
+    a.Temp <- array(data = NA, dim = c(nsample, n.t+1, n.s_long))
     for (i in 1:n.s_long) {
       a.Temp[ , ,i] <- (m.M_8s == i)
     }
