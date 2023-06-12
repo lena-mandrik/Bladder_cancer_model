@@ -19,7 +19,7 @@ set.seed(10)
 
 ###Set up the Global Parameters
 run_mode <- "Deterministic" # Available modes include "Testing" (returns all matrices), "Deterministic" (m.Out only), "PSA" (m.Out only)
-cohort <- 0 # 1 = all individuals start model at same age (cohort), 0 = individuals start in model at true (HSE) age
+cohort <- 1 # 1 = all individuals start model at same age (cohort), 0 = individuals start in model at true (HSE) age
 
 if(cohort ==1){
   cohort_age <- 30 #select starting age of cohort (hash out or set to anything if not using cohort)
@@ -33,7 +33,7 @@ if(cohort ==1){
 }
 
 
-n.loops <- 3 # The number of model loops/PSA loops to run 
+n.loops <- 10 # The number of model loops/PSA loops to run 
 cl <- 1  # The cycle length (years) 
 n.t   <- if(cohort==1){100-cohort_age}else{100-min_age}  # The number of cycles to run 
 d.c <- 0.035 # The discount rate for costs
@@ -107,40 +107,40 @@ results_no_screen[[iter]] = Simulate_NHD(nsample, n.t, pop_ns)
 # Run the model for screening pop
 DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
 DS_age = 70 #Set the age of the dipstick if screening happens, set to zero if no screening
-DS_round = 10 #' DS_round - number of the screening rounds
-DS_freq =1   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
+DS_round = 1 #' DS_round - number of the screening rounds
+DS_freq =0   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
 #iter=1
 
 results_screen_70[[iter]] = Simulate_NHD(nsample, n.t, pop_sc_70)
 
 DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
-DS_age = 30 #Set the age of the dipstick if screening happens, set to zero if no screening
+DS_age = 72 #Set the age of the dipstick if screening happens, set to zero if no screening
 DS_round = 1 #' DS_round - number of the screening rounds
-DS_freq =1   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
+DS_freq =0   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
 
 results_screen_72[[iter]] = Simulate_NHD(nsample, n.t, pop_sc_72)
 
-DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
-DS_age = 75 #Set the age of the dipstick if screening happens, set to zero if no screening
-DS_round = 1 #' DS_round - number of the screening rounds
-DS_freq =1   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
+#DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
+#DS_age = 75 #Set the age of the dipstick if screening happens, set to zero if no screening
+#DS_round = 1 #' DS_round - number of the screening rounds
+#DS_freq =0   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
 
-results_screen_75[[iter]] = Simulate_NHD(nsample, n.t, pop_sc_75)
+#results_screen_75[[iter]] = Simulate_NHD(nsample, n.t, pop_sc_75)
 
 
-DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
-DS_age = 60 #Set the age of the dipstick if screening happens, set to zero if no screening
-DS_round = 5 #' DS_round - number of the screening rounds
-DS_freq =1   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
+#DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
+#DS_age = 60 #Set the age of the dipstick if screening happens, set to zero if no screening
+#DS_round = 5 #' DS_round - number of the screening rounds
+#DS_freq =1   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
 
-results_screen_60_5t.1[[iter]] = Simulate_NHD(nsample, n.t, pop_sc_60_5t.1)
+#results_screen_60_5t.1[[iter]] = Simulate_NHD(nsample, n.t, pop_sc_60_5t.1)
 
-DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
-DS_age = 60 #Set the age of the dipstick if screening happens, set to zero if no screening
-DS_round = 5 #' DS_round - number of the screening rounds
-DS_freq =2   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
+#DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
+#DS_age = 60 #Set the age of the dipstick if screening happens, set to zero if no screening
+#DS_round = 5 #' DS_round - number of the screening rounds
+#DS_freq =2   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
 
-results_screen_60_5t.2[[iter]] = Simulate_NHD(nsample, n.t, pop_sc_60_5t.2)
+#results_screen_60_5t.2[[iter]] = Simulate_NHD(nsample, n.t, pop_sc_60_5t.2)
 
 DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
 DS_age = 65 #Set the age of the dipstick if screening happens, set to zero if no screening
@@ -176,13 +176,13 @@ if(run_mode == "PSA"){
 if(run_mode == "Deterministic"){
   
   results_no_screen_cum <- process_DA_results(results_no_screen, "results_NoScreen.txt")
-  process_DA_results(results_screen_70, "results_screen_70.txt")
-  process_DA_results(results_screen_72, "results_screen_72.txt")
-  process_DA_results(results_screen_75, "results_screen_75.txt")
-  process_DA_results(results_screen_60_5t.1, "results_screen_60_5t.1.txt")
-  process_DA_results(results_screen_60_5t.2, "results_screen_60_5t.2.txt")
-  process_DA_results(results_screen_65_5t.1, "results_screen_65_5t.1.txt")
-  process_DA_results(results_screen_65_5t.2, "results_screen_65_5t.2.txt")
+  results_screen_70 <- process_DA_results(results_screen_70, "results_screen_70.txt")
+  results_screen_72 <- process_DA_results(results_screen_72, "results_screen_72.txt")
+  results_screen_75 <- process_DA_results(results_screen_75, "results_screen_75.txt")
+  results_screen_60_5t.1 <- process_DA_results(results_screen_60_5t.1, "results_screen_60_5t.1.txt")
+  results_screen_60_5t.2 <- process_DA_results(results_screen_60_5t.2, "results_screen_60_5t.2.txt")
+  results_screen_65_5t.1 <- process_DA_results(results_screen_65_5t.1, "results_screen_65_5t.1.txt")
+  results_screen_65_5t.2 <- process_DA_results(results_screen_65_5t.2, "results_screen_65_5t.2.txt")
   
   
   

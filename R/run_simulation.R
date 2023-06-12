@@ -111,12 +111,17 @@ Simulate_NHD <- function(nsample, n.t, pop) {
    
     #Symptomatic detection
     if(DS_screen ==1){elig_time <- as.matrix(1*(m.Rand[,"Screen_time", t] <= 0.5), ncol=1)} else {elig_time <- as.matrix(rep(1,nsample), ncol=1)}  # Run symptomatic mode for those with m.Rand < 0.5 (half of the people) to ensure equal impact of screen and sympt pathways
-    #Reset newly diagnosed and move year of diagnosis on by one
-    m.Diag[, "HG_new_diag"] <- m.Diag[, "LG_new_diag"] <-0
+    
+    #Reset newly diagnosed for all (two runs for sympt + screen) and move year of diagnosis on by one
+    New_diag_all <- as.matrix(rep(0, nsample), ncol=1) # nsample - number of individuals in the simulated pop
+    
     m.Diag[, "HG_yr_diag"][m.Diag[m.M[,t] !=4, "HG_yr_diag"] >=1] <- m.Diag[, "HG_yr_diag"][m.Diag[m.M[,t] !=4, "HG_yr_diag"] >=1] + 1
     m.Diag[, "LG_yr_diag"][m.Diag[m.M[,t] !=4, "LG_yr_diag"] >=1] <- m.Diag[, "LG_yr_diag"][m.Diag[m.M[,t] !=4, "LG_yr_diag"] >=1] + 1
     
     m.Diag <- f.symptom(m.Diag, m.State, m.Rand, pop, t, m.M, elig_time) 
+    
+    # Update the new diag with those just identified in the f.sympt
+   # New_diag_all[,1] <- New_diag_all[,1] +m.Diag[, "HG_new_diag"] + m.Diag[, "LG_new_diag"]
     
     # Screening detection
     if(DS_screen ==1){
@@ -127,11 +132,12 @@ Simulate_NHD <- function(nsample, n.t, pop) {
       m.M[,t+1][which(m.Screen[ ,t+1 , "Die_TURBT"]==1)] <- 4
       # NOTE: currently only a progress to HGBC after the surveillance for 3 years is considered for LGBC. HGBC are only following the survival curve.
       # Not sure whether I need to return to no cancer everyone in the end of the 10 year time period
-    }
-  
-    if(DS_screen ==1){
+      New_diag_all[,1] <- New_diag_all[,1] +m.Diag[, "HG_new_diag"] + m.Diag[, "LG_new_diag"]
+      
       elig_time <- as.matrix(1*(m.Rand[,"Screen_time", t] > 0.5), ncol=1)
       m.Diag <- f.symptom(m.Diag, m.State, m.Rand, pop, t, m.M, elig_time)
+      New_diag_all[,1] <- New_diag_all[,1] +m.Diag[, "HG_new_diag"] + m.Diag[, "LG_new_diag"]
+      
     }
     
     # define BC deaths
@@ -155,7 +161,7 @@ Simulate_NHD <- function(nsample, n.t, pop) {
     m.C[, t+1] <- f.calc.cost(m.State, m.Diag, m.Cost.treat) # Assess CRC treatment costs per individual during the cycle t+1 (note not half cycle corrected) 
     
     # Gather outcomes for cycle t (total and subgroups)
-    m.Out <- f.aggregate.outcomes(m.M_8s, m.Out, m.M, m.E, m.C, m.Diag, m.Screen, m.State, pop, t)
+    m.Out <- f.aggregate.outcomes(m.M_8s, m.Out, m.M, m.E, m.C, m.Diag, m.Screen, m.State, pop, t, New_diag_all)
    
     # Update the age for only those individuals who are alive
     IND <- m.M[, t+1] != 4

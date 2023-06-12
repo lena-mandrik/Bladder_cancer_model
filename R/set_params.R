@@ -30,7 +30,7 @@ f.stage <- function(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.
   
   T.onsetToStage3 <- T.onsetToStage2+T.Stage3
   T.onsetToStage4 <- T.onsetToStage3+T.Stage4
-  v.Stages <- round(cbind(T.onsetToStage2, T.onsetToStage3, T.onsetToStage4))
+  v.Stages <- round(cbind(T.onsetToStage2, T.onsetToStage3, T.onsetToStage4)) #
   
   v.Stages
   

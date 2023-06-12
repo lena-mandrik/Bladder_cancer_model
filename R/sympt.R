@@ -11,6 +11,8 @@
 
 f.symptom <- function(m.Diag, m.State, m.Rand, pop, t, m.M, elig_time) {
   
+  m.Diag[, "HG_new_diag"] <- m.Diag[, "LG_new_diag"] <-0
+  
  
   #Specify who is eligible for diagnosis of those still alive (those not yet diagnosed)
   elig_HG <- m.Diag[, "HG_diag"] ==0 & m.M[ ,t+1] ==3 &  elig_time ==1# for HG cancer
