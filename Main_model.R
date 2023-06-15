@@ -33,7 +33,7 @@ if(cohort ==1){
 }
 
 
-n.loops <- 10 # The number of model loops/PSA loops to run 
+n.loops <- 2 # The number of model loops/PSA loops to run 
 cl <- 1  # The cycle length (years) 
 n.t   <- if(cohort==1){100-cohort_age}else{100-min_age}  # The number of cycles to run 
 d.c <- 0.035 # The discount rate for costs
@@ -93,12 +93,12 @@ pop_ns <- pop_sc_70 <- pop_sc_72 <- pop_sc_75 <-
 m.Rand <- f.generate_random()
 
 # temp code to check
-#test_accuracy[c(2,3,5:7),1] <- 1
-#diag1_accuracy[c(2,3,5:7),1] <- 1
-#diag2_accuracy[c(2,3,5:7),1] <- 1
-#test_accuracy[1,1] <- 1
-#diag1_accuracy[1,1] <- 1
-#diag2_accuracy[1,1] <- 1
+test_accuracy[c(2,3,5:7),1] <- 1
+diag1_accuracy[c(2,3,5:7),1] <- 1
+diag2_accuracy[c(2,3,5:7),1] <- 1
+test_accuracy[1,1] <- 0
+diag1_accuracy[1,1] <- 0
+diag2_accuracy[1,1] <- 0
 # Run the model for no screening pop
 DS_screen =0 #Set whether the screening with dipstick happens, 0 - no, 1- yes
 DS_age = 100 #Set the age of the dipstick if screening happens, set to any if no screening
@@ -108,7 +108,7 @@ results_no_screen[[iter]] = Simulate_NHD(nsample, n.t, pop_ns)
 DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
 DS_age = 70 #Set the age of the dipstick if screening happens, set to zero if no screening
 DS_round = 1 #' DS_round - number of the screening rounds
-DS_freq =0   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
+DS_freq =1   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
 #iter=1
 
 results_screen_70[[iter]] = Simulate_NHD(nsample, n.t, pop_sc_70)
@@ -175,14 +175,14 @@ if(run_mode == "PSA"){
 #' Analyse the results
 if(run_mode == "Deterministic"){
   
-  results_no_screen_cum <- process_DA_results(results_no_screen, "results_NoScreen.txt")
-  results_screen_70 <- process_DA_results(results_screen_70, "results_screen_70.txt")
-  results_screen_72 <- process_DA_results(results_screen_72, "results_screen_72.txt")
-  results_screen_75 <- process_DA_results(results_screen_75, "results_screen_75.txt")
-  results_screen_60_5t.1 <- process_DA_results(results_screen_60_5t.1, "results_screen_60_5t.1.txt")
-  results_screen_60_5t.2 <- process_DA_results(results_screen_60_5t.2, "results_screen_60_5t.2.txt")
-  results_screen_65_5t.1 <- process_DA_results(results_screen_65_5t.1, "results_screen_65_5t.1.txt")
-  results_screen_65_5t.2 <- process_DA_results(results_screen_65_5t.2, "results_screen_65_5t.2.txt")
+  results_no_screen_cum <- (process_DA_results(results_no_screen, "results_NoScreen.txt"))
+  results_screen_70_cum <- (process_DA_results(results_screen_70, "results_screen_70.txt"))
+  results_screen_72_cum <- (process_DA_results(results_screen_72, "results_screen_72.txt"))
+  #results_screen_75_cum <- process_DA_results(results_screen_75, "results_screen_75.txt")
+  #results_screen_60_5t.1_cum <- process_DA_results(results_screen_60_5t.1, "results_screen_60_5t.1.txt")
+  #results_screen_60_5t.2_cum <- process_DA_results(results_screen_60_5t.2, "results_screen_60_5t.2.txt")
+  results_screen_65_5t.1_cum <- (process_DA_results(results_screen_65_5t.1, "results_screen_65_5t.1.txt"))
+  results_screen_65_5t.2_cum <- (process_DA_results(results_screen_65_5t.2, "results_screen_65_5t.2.txt"))
   
   
   
@@ -190,10 +190,10 @@ if(run_mode == "Deterministic"){
 
 if(run_mode == "PSA"){
   
-  results_no_screen_PSA <- process_PSA_results(results_no_screen, "results_no_screen_PSA.txt")
-  results_no_screen_mean <- rowMeans(PSA_results_no_screen)
-  results_screen_70_mean <- rowMeans(PSA_results_screen_70)
-  results_screen_75_mean <- rowMeans(PSA_results_screen_75)
+  results_no_screen_PSA_cum  <- process_PSA_results(results_no_screen, "results_no_screen_PSA.txt")
+  results_no_screen_cum <- rowMeans(PSA_results_no_screen)
+  results_screen_70_cum  <- rowMeans(PSA_results_screen_70)
+  results_screen_75_cum  <- rowMeans(PSA_results_screen_75)
   PSA_results <- cbind(results_no_screen_mean, results_screen_70_mean, results_screen_75_mean)
 }
 

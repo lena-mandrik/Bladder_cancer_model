@@ -121,7 +121,7 @@ Simulate_NHD <- function(nsample, n.t, pop) {
     m.Diag <- f.symptom(m.Diag, m.State, m.Rand, pop, t, m.M, elig_time) 
     
     # Update the new diag with those just identified in the f.sympt
-   # New_diag_all[,1] <- New_diag_all[,1] +m.Diag[, "HG_new_diag"] + m.Diag[, "LG_new_diag"]
+    if(DS_screen ==0){ New_diag_all[,1] <- New_diag_all[,1] +m.Diag[, "HG_new_diag"] + m.Diag[, "LG_new_diag"]}
     
     # Screening detection
     if(DS_screen ==1){
