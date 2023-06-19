@@ -9,9 +9,9 @@
 #' @return an updated current diagnostic information matrix
 
 
-f.symptom <- function(m.Diag, m.State, m.Rand, pop, t, m.M, elig_time) {
+f.symptom <- function(m.Diag, m.State, m.Rand, pop, t, m.M, elig_time, nsample) {
   
-  m.Diag[, "HG_new_diag"] <- m.Diag[, "LG_new_diag"] <-0
+ # m.Diag[, "HG_new_diag"] <- m.Diag[, "LG_new_diag"] <-0
   
  
   #Specify who is eligible for diagnosis of those still alive (those not yet diagnosed)
@@ -41,23 +41,25 @@ f.symptom <- function(m.Diag, m.State, m.Rand, pop, t, m.M, elig_time) {
   
   #Update m.Diag matrix for symptomatic diagnosis for high grade cancers
   #Determine who is newly diagnosed
-  m.Diag[, "HG_new_diag"] <- 1*((m.Rand[ ,"SYMPT_HG", t] < risk.Sympt.diag) & elig_HG) #for HG cancer
-  m.Diag[, "HG_yr_diag"] <- m.Diag[, "HG_yr_diag"] + m.Diag[, "HG_new_diag"]
-  m.Diag[, "HG_diag"] <- m.Diag[, "HG_diag"] + m.Diag[, "HG_new_diag"]
-  m.Diag[, "HG_sympt_diag"] <- m.Diag[, "HG_sympt_diag"] + m.Diag[, "HG_new_diag"]
-  m.Diag[, "HG_age_diag"] <- m.Diag[, "HG_age_diag"] + (pop[, "age"] * m.Diag[, "HG_new_diag"])
+  #m.Diag[, "HG_new_diag"] <- 1*((m.Rand[ ,"SYMPT_HG", t] < risk.Sympt.diag) & elig_HG) #for HG cancer
+  New_HG <- 1*((m.Rand[ ,"SYMPT_HG", t] < risk.Sympt.diag) & elig_HG)
+  m.Diag[, "HG_yr_diag"] <- m.Diag[, "HG_yr_diag"] + New_HG #m.Diag[, "HG_new_diag"]
+  m.Diag[, "HG_diag"] <- m.Diag[, "HG_diag"] + New_HG #m.Diag[, "HG_new_diag"]
+  m.Diag[, "HG_sympt_diag"] <- m.Diag[, "HG_sympt_diag"] + New_HG #m.Diag[, "HG_new_diag"]
+  m.Diag[, "HG_age_diag"] <- m.Diag[, "HG_age_diag"] + (pop[, "age"] * New_HG) #m.Diag[, "HG_new_diag"])
   m.Diag[, "HG_stage_diag"] <- m.Diag[, "HG_stage_diag"] + 
-    ((m.State[, "St1_HG"] * 1 + m.State[, "St2_HG"] * 2 + m.State[, "St3_HG"] * 3+ m.State[, "St4_HG"] * 4) * m.Diag[, "HG_new_diag"])
+    ((m.State[, "St1_HG"] * 1 + m.State[, "St2_HG"] * 2 + m.State[, "St3_HG"] * 3+ m.State[, "St4_HG"] * 4) * New_HG)#m.Diag[, "HG_new_diag"])
   
   #Update m.Diag matrix for symptomatic diagnosis for low grade cancers
-  m.Diag[, "LG_new_diag"] <- 1*((m.Rand[ ,"SYMPT_LG", t] < risk.Sympt.diag_LG) & elig_LG) #for LG cancer
-  m.Diag[, "LG_yr_diag"] <- m.Diag[, "LG_yr_diag"] + m.Diag[, "LG_new_diag"]
-  m.Diag[ , "LG_diag"] <- m.Diag[ , "LG_diag"] + m.Diag[, "LG_new_diag"]
-  m.Diag[ , "LG_age_diag"] <- m.Diag[, "LG_age_diag"] + (pop[, "age"] * m.Diag[, "LG_new_diag"])
-  m.Diag[, "LG_sympt_diag"] <- m.Diag[, "LG_sympt_diag"] + m.Diag[, "LG_new_diag"]
+  #m.Diag[, "LG_new_diag"] <- 1*((m.Rand[ ,"SYMPT_LG", t] < risk.Sympt.diag_LG) & elig_LG) #for LG cancer
+  New_LG <- 1*((m.Rand[ ,"SYMPT_LG", t] < risk.Sympt.diag_LG) & elig_LG)
+  m.Diag[, "LG_yr_diag"] <- m.Diag[, "LG_yr_diag"] + New_LG#m.Diag[, "LG_new_diag"]
+  m.Diag[ , "LG_diag"] <- m.Diag[ , "LG_diag"] + New_LG#m.Diag[, "LG_new_diag"]
+  m.Diag[ , "LG_age_diag"] <- m.Diag[, "LG_age_diag"] + (pop[, "age"] * New_LG)#m.Diag[, "LG_new_diag"])
+  m.Diag[, "LG_sympt_diag"] <- m.Diag[, "LG_sympt_diag"] + New_LG #m.Diag[, "LG_new_diag"]
 
-  m.Diag[, "yr_diag"] = m.Diag[, "LG_yr_diag"]
-  m.Diag[, "yr_diag"] = replace(m.Diag[, "yr_diag"], m.Diag[, "HG_diag"] >0, m.Diag[m.Diag[, "HG_diag"] >0, "HG_yr_diag"])
+  m.Diag[, "yr_diag"] <- m.Diag[, "LG_yr_diag"]
+  m.Diag[, "yr_diag"] <- replace(m.Diag[, "yr_diag"], m.Diag[, "HG_diag"] >0, m.Diag[m.Diag[, "HG_diag"] >0, "HG_yr_diag"])
   
   m.Diag
   

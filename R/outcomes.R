@@ -84,7 +84,7 @@ f.calc.utility <- function(m.State, m.Diag, pop, t) {
 #' t: cycle number
 #' @return a matrix of aggregated, weighted outcomes for time t
 
-f.aggregate.outcomes <- function(m.M_8s, m.Out, m.M, m.E, m.C, m.Diag, m.Screen, m.State, pop, t, New_diag_all) {
+f.aggregate.outcomes <- function(m.M_8s, m.Out, m.M, m.E, m.C, m.Diag, m.Screen, m.State, pop, t) {
   
   ###Fill outcomes matrix
   
@@ -105,17 +105,17 @@ f.aggregate.outcomes <- function(m.M_8s, m.Out, m.M, m.E, m.C, m.Diag, m.Screen,
   m.Out["LYS", t+1] <- sum(0.5 * ((m.M[, t] < 4) + (m.M[, t+1] < 4)) * pop[, "weighting"]) # total weighted LYs
   
   #weighted cancer diagnoses and mortality
-  m.Out["LG_SYMPT", t+1] <- sum((New_diag_all[,1] ==1 & m.Diag[, "LG_sympt_diag"] ==1) * pop[, "weighting"]) 
-  m.Out["HG_St1_SYMPT", t+1] <- sum((New_diag_all[,1] ==1 & m.Diag[, "HG_sympt_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==1) * pop[, "weighting"]) 
-  m.Out["HG_St2_SYMPT", t+1] <- sum((New_diag_all[,1] ==1 & m.Diag[, "HG_sympt_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==2) * pop[, "weighting"]) 
-  m.Out["HG_St3_SYMPT", t+1] <- sum((New_diag_all[,1] ==1 & m.Diag[, "HG_sympt_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==3) * pop[, "weighting"]) 
-  m.Out["HG_St4_SYMPT", t+1] <- sum((New_diag_all[,1] ==1 & m.Diag[, "HG_sympt_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==4) * pop[, "weighting"])
+  m.Out["LG_SYMPT", t+1] <- sum((m.Diag[ ,"yr_diag"]==1 & m.Diag[, "LG_sympt_diag"] ==1) * pop[, "weighting"]) 
+  m.Out["HG_St1_SYMPT", t+1] <- sum((m.Diag[ ,"yr_diag"]==1 & m.Diag[, "HG_sympt_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==1) * pop[, "weighting"]) 
+  m.Out["HG_St2_SYMPT", t+1] <- sum((m.Diag[ ,"yr_diag"]==1 & m.Diag[, "HG_sympt_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==2) * pop[, "weighting"]) 
+  m.Out["HG_St3_SYMPT", t+1] <- sum((m.Diag[ ,"yr_diag"]==1 & m.Diag[, "HG_sympt_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==3) * pop[, "weighting"]) 
+  m.Out["HG_St4_SYMPT", t+1] <- sum((m.Diag[ ,"yr_diag"]==1 & m.Diag[, "HG_sympt_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==4) * pop[, "weighting"])
   
-  m.Out["LG_SCRN", t+1] <- sum((New_diag_all[,1] ==1 & m.Diag[, "LG_screen_diag"] ==1) * pop[, "weighting"]) 
-  m.Out["HG_St1_SCRN", t+1] <- sum((New_diag_all[,1] ==1 & m.Diag[, "HG_screen_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==1) * pop[, "weighting"]) 
-  m.Out["HG_St2_SCRN", t+1] <- sum((New_diag_all[,1] ==1 & m.Diag[, "HG_screen_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==2) * pop[, "weighting"]) 
-  m.Out["HG_St3_SCRN", t+1] <- sum((New_diag_all[,1] ==1 & m.Diag[, "HG_screen_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==3) * pop[, "weighting"]) 
-  m.Out["HG_St4_SCRN", t+1] <- sum((New_diag_all[,1] ==1 & m.Diag[, "HG_screen_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==4) * pop[, "weighting"]) 
+  m.Out["LG_SCRN", t+1] <- sum((m.Diag[ ,"yr_diag"]==1 & m.Diag[, "LG_screen_diag"] ==1) * pop[, "weighting"]) 
+  m.Out["HG_St1_SCRN", t+1] <- sum((m.Diag[ ,"yr_diag"]==1 & m.Diag[, "HG_screen_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==1) * pop[, "weighting"]) 
+  m.Out["HG_St2_SCRN", t+1] <- sum((m.Diag[ ,"yr_diag"]==1 & m.Diag[, "HG_screen_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==2) * pop[, "weighting"]) 
+  m.Out["HG_St3_SCRN", t+1] <- sum((m.Diag[ ,"yr_diag"]==1 & m.Diag[, "HG_screen_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==3) * pop[, "weighting"]) 
+  m.Out["HG_St4_SCRN", t+1] <- sum((m.Diag[ ,"yr_diag"]==1 & m.Diag[, "HG_screen_diag"] ==1 & m.Diag[, "HG_stage_diag"] ==4) * pop[, "weighting"]) 
  
   m.Out["HG_St1_MORT", t+1] <- sum((m.M_8s[, t+1] ==8 & m.M_8s[, t] <8 & m.Diag[, "HG_stage_diag"] ==1) * pop[, "weighting"]) 
   m.Out["HG_St2_MORT", t+1] <- sum((m.M_8s[, t+1] ==8 & m.M_8s[, t] <8 & m.Diag[, "HG_stage_diag"] ==2) * pop[, "weighting"]) 

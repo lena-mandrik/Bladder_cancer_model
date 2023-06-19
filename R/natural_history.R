@@ -153,4 +153,53 @@ f.recurrence.LGBC <- function(m.Diag, nsample, t, P.Recurrence.LR){
   m.Diag
 }
 
- 
+
+
+
+
+
+###########
+
+f.onset.Diag <- function(m.Diag, m.M, pop, t){
+  
+  # Record the characteristics of onset for HG cancer
+  m.Diag[, "HG_yr_onset"][m.Diag[, "HG_yr_onset"] >=1] <- m.Diag[, "HG_yr_onset"][m.Diag[, "HG_yr_onset"] >=1] +1 #Update the year of onset if the cancer developed the previous years
+  new_HG <-  1*(m.M[, t+1] ==3 & m.M[, t] != 3)
+  m.Diag[, "HG_yr_onset"] <- m.Diag[, "HG_yr_onset"] + new_HG
+  
+  # Mark those individuals who just had BC onset
+  m.Diag[, "HG_age_onset"] <- m.Diag[, "HG_age_onset"] + (pop[, "age"] * new_HG)  
+  
+  # Mark in m.Diag all persons with BC (independently on diagnosis)
+  m.Diag[ ,"HG_state"] <- replace(m.Diag[ ,"HG_state"], m.Diag[ ,"HG_yr_onset"] >0, 1)
+  
+  # Mark age of those individuals who just had LG onset
+  new_LG <- m.M[ ,t+1]==2 & m.M[ ,t]==1
+  
+  # Record the characteristics of onset for LG cancer
+  m.Diag[, "LG_state"][which(new_LG)] <- 1
+  m.Diag[, "LG_age_onset"] <- m.Diag[, "LG_age_onset"] + (pop[, "age"] * new_LG) 
+  
+  return(m.Diag)
+}
+  
+
+#######################
+f.HG.stages <- function(m.M_8s, m.BC.T.to.Stage, m.M, m.Diag){
+  
+  # Update m.M_8s matrix with the states for those who have HG cancer
+  m.M_8s[, t+1] <- m.M[, t+1]
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t] ==8, 8) #Replace with BC death those who died with BC before this cycle
+  
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & round(m.BC.T.to.Stage[ ,"T.onsetToStage2"])==m.Diag[,"HG_yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==5)) & m.Diag[, "HG_yr_diag"] ==0, 5) #Replace for stage 2
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & round(m.BC.T.to.Stage[ ,"T.onsetToStage3"])==m.Diag[,"HG_yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==6)) & m.Diag[, "HG_yr_diag"] ==0, 6) #Replace for stage 3
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & round(m.BC.T.to.Stage[ ,"T.onsetToStage4"])==m.Diag[,"HG_yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==7)) & m.Diag[, "HG_yr_diag"] ==0, 7) #Replace for stage 4
+  
+  # replace with the stage for those who were diagnosed assuming that they don't progress
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "HG_stage_diag"]==2 & m.M[, t+1] != 4, 5) #replace the stage at diagnosis for those who were diagnosed
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "HG_stage_diag"]==3 & m.M[, t+1] != 4, 6) #replace the stage at diagnosis for those who were diagnosed
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "HG_stage_diag"]==4 & m.M[, t+1] != 4, 7) #replace the stage at diagnosis for those who were diagnosed
+  
+  return(m.M_8s)
+}
+

@@ -100,18 +100,19 @@ test_accuracy[1,1] <- 0
 diag1_accuracy[1,1] <- 0
 diag2_accuracy[1,1] <- 0
 # Run the model for no screening pop
-DS_screen =0 #Set whether the screening with dipstick happens, 0 - no, 1- yes
-DS_age = 100 #Set the age of the dipstick if screening happens, set to any if no screening
-results_no_screen[[iter]] = Simulate_NHD(nsample, n.t, pop_ns)
+#DS_screen =0 #Set whether the screening with dipstick happens, 0 - no, 1- yes
+#DS_age = 100 #Set the age of the dipstick if screening happens, set to any if no screening
+#results_no_screen[[iter]] = Simulate_NHD(nsample, n.t, pop_ns, m.BC.T.to.Stage)
 
 # Run the model for screening pop
 DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
-DS_age = 70 #Set the age of the dipstick if screening happens, set to zero if no screening
-DS_round = 1 #' DS_round - number of the screening rounds
-DS_freq =1   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
+DS_age = 30 #Set the age of the dipstick if screening happens, set to zero if no screening
+DS_round = 10 #' DS_round - number of the screening rounds
+DS_freq =2   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
 #iter=1
 
-results_screen_70[[iter]] = Simulate_NHD(nsample, n.t, pop_sc_70)
+results_screen_70[[iter]] = Simulate_NHD(nsample, n.t, pop_sc_70, m.BC.T.to.Stage)
+
 
 DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
 DS_age = 72 #Set the age of the dipstick if screening happens, set to zero if no screening
