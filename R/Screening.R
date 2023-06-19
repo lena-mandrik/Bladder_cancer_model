@@ -187,7 +187,7 @@ f.screen_diag <- function(m.Screen, m.State, m.Diag, pop, t) {
 
 #######################################################
 #re-set the stage at m.M_8s if the patient stage changed at this cycle and progression was to happen in the 2d half of the year
-f.screen.shift <- function(m.M_8s, m.BC.T.to.Stage, m.Screen, m.Diag){
+f.screen.shift <- function(m.M_8s, m.BC.T.to.Stage, m.Screen, m.Diag, t){
   
   m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t+1]==5 & round(m.BC.T.to.Stage[ ,"T.onsetToStage2"])==m.Diag[,"HG_yr_onset"] & m.BC.T.to.Stage[ ,"T.onsetToStage2"]%%1 > 0.5 & m.Screen[ ,t+1 , "HG"]==1, 3) #get downstage to one stage (previously sampled stage) if time to progression is less than 6 m
   m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t+1]==6 & round(m.BC.T.to.Stage[ ,"T.onsetToStage3"])==m.Diag[,"HG_yr_onset"] & m.BC.T.to.Stage[ ,"T.onsetToStage3"]%%1 > 0.5 & m.Screen[ ,t+1 , "HG"]==1, 5) #get downstage (previously sampled stage) if time to progression is less than 6 m

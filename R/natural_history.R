@@ -185,7 +185,7 @@ f.onset.Diag <- function(m.Diag, m.M, pop, t){
   
 
 #######################
-f.HG.stages <- function(m.M_8s, m.BC.T.to.Stage, m.M, m.Diag){
+f.HG.stages <- function(m.M_8s, m.BC.T.to.Stage, m.M, m.Diag, t){
   
   # Update m.M_8s matrix with the states for those who have HG cancer
   m.M_8s[, t+1] <- m.M[, t+1]

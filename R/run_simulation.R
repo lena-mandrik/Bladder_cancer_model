@@ -73,7 +73,7 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
     m.Diag <- f.onset.Diag(m.Diag, m.M, pop, t) #includes m.Diag[, "HG_age_onset"]
     
     # Update m.M_8s matrix with the states for those who have HG cancer
-    m.M_8s <- f.HG.stages(m.M_8s, m.BC.T.to.Stage, m.M, m.Diag)
+    m.M_8s <- f.HG.stages(m.M_8s, m.BC.T.to.Stage, m.M, m.Diag, t)
    # beforet2<-m.M_8s[,3]
     
     # Update the matrix with the health state numbers with either 0 or 1 depending if it is equal to the sampled state
@@ -105,7 +105,7 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
       m.Screen <- f.DS_screen(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, DS_age, DS_round, DS_freq, n_round)
       
       #re-set the stage at m.M_8s if the patient stage changed at this cycle and progression was to happen in the 2d half of the year
-      m.M_8s <- f.screen.shift(m.M_8s, m.BC.T.to.Stage, m.Screen, m.Diag)
+      m.M_8s <- f.screen.shift(m.M_8s, m.BC.T.to.Stage, m.Screen, m.Diag ,t)
       
       #update again state matrix
       m.State[] <- 0

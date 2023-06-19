@@ -109,17 +109,16 @@ DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
 DS_age = 30 #Set the age of the dipstick if screening happens, set to zero if no screening
 DS_round = 10 #' DS_round - number of the screening rounds
 DS_freq =2   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
-#iter=1
+
 
 results_screen_70[[iter]] = Simulate_NHD(nsample, n.t, pop_sc_70, m.BC.T.to.Stage)
-
 
 DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
 DS_age = 72 #Set the age of the dipstick if screening happens, set to zero if no screening
 DS_round = 1 #' DS_round - number of the screening rounds
 DS_freq =0   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
 
-results_screen_72[[iter]] = Simulate_NHD(nsample, n.t, pop_sc_72)
+results_screen_72[[iter]] = Simulate_NHD(nsample, n.t, pop_sc_72, m.BC.T.to.Stage)
 
 #DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
 #DS_age = 75 #Set the age of the dipstick if screening happens, set to zero if no screening
@@ -148,14 +147,14 @@ DS_age = 65 #Set the age of the dipstick if screening happens, set to zero if no
 DS_round = 5 #' DS_round - number of the screening rounds
 DS_freq =1   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
 
-results_screen_65_5t.1[[iter]] = Simulate_NHD(nsample, n.t, pop_sc_65_5t.1)
+results_screen_65_5t.1[[iter]] = Simulate_NHD(nsample, n.t, pop_sc_65_5t.1, m.BC.T.to.Stage)
 
 DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
 DS_age = 65 #Set the age of the dipstick if screening happens, set to zero if no screening
 DS_round = 5 #' DS_round - number of the screening rounds
 DS_freq =2   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
 
-results_screen_65_5t.2[[iter]] = Simulate_NHD(nsample, n.t, pop_sc_65_5t.2)
+results_screen_65_5t.2[[iter]] = Simulate_NHD(nsample, n.t, pop_sc_65_5t.2, m.BC.T.to.Stage)
    
 
 
