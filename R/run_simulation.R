@@ -23,11 +23,14 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
     
     }
   
-  m.C[, 1] <- 0 # estimate costs per individual for the initial health state 
-  m.E[, 1] <- pop[, "EQ5D"] - (Utility.age * (pop[, "age"] - pop[, "age_0"])) # estimate QALY per individual for the initial health state and starting age
-  m.E[, 1] <- replace(m.E[, 1], m.E[, 1] >1, 1) # if EQ-5D over 1 reset to 1
-  m.E[, 1] <- replace(m.E[, 1], m.E[, 1] <=(-0.594), -0.594) # if EQ-5D under -0.594 reset to -0.594
-  
+  if(run_mode != "Calibration" ){
+    m.C[, 1] <- 0 # estimate costs per individual for the initial health state 
+    m.E[, 1] <- pop[, "EQ5D"] - (Utility.age * (pop[, "age"] - pop[, "age_0"])) # estimate QALY per individual for the initial health state and starting age
+    m.E[, 1] <- replace(m.E[, 1], m.E[, 1] >1, 1) # if EQ-5D over 1 reset to 1
+    m.E[, 1] <- replace(m.E[, 1], m.E[, 1] <=(-0.594), -0.594) # if EQ-5D under -0.594 reset to -0.594
+    
+  }
+ 
   # create another matrix capturing the current health state for each individual
   m.State <- matrix(0, nrow = nsample, ncol = n.s_long)
   colnames(m.State) <- states_long
@@ -44,7 +47,7 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
                        "LG_sympt_diag", "HG_screen_diag", "LG_screen_diag", "FP", 
    "HG_stage_diag", "yr_diag", "HG_yr_diag", "LG_yr_diag", "HG_yr_onset", "HG_age_onset", "LG_age_onset", "age_BC_death")
   
-  
+ if(run_mode != "Calibration" ){
   # Create an array to gather screening and surveillance information for each cycle
   m.Screen <- array(data = 0, dim = c(nsample, n.t + 1, length(screen_names)))
   dimnames(m.Screen)[[3]] <- screen_names # note that this is defined in set_params
@@ -53,6 +56,7 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
   m.Out <- matrix(0, nrow = length(out_names), ncol = n.t + 1)
   rownames(m.Out) <- out_names
   colnames(m.Out) <- c(0:n.t)
+ }
   
   #Create additional matrices for subgroup results
   #m.Out_M <- m.Out_F <- m.Out_smoke <- m.Out_past.smoke <- m.Out
@@ -61,8 +65,12 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
   
   # loop to run the model over time
   for(t in 1:n.t) {
+    
     # Natural History
     TP <- f.calc.indiv.TPs(pop, m.Diag) #calculate new individualised transition probabilities for onset of BC and OC mortality
+    
+    #TP[1:50,3]=1
+    #TP[1:50,c(1,2,4)]=0
     
     m.p <- f.Probs(m.M[, t], TP) #calculate transition probabilities for 4 states at cycle t (excludes TP for those with invasive BC)
     
@@ -74,8 +82,7 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
     
     # Update m.M_8s matrix with the states for those who have HG cancer
     m.M_8s <- f.HG.stages(m.M_8s, m.BC.T.to.Stage, m.M, m.Diag, t)
-   # beforet2<-m.M_8s[,3]
-    
+
     # Update the matrix with the health state numbers with either 0 or 1 depending if it is equal to the sampled state
     m.State[] <- 0
     for(n in 1:n.s_long) {
@@ -85,19 +92,13 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
     #Symptomatic detection
     if(DS_screen ==1){elig_time <- as.matrix(1*(m.Rand[,"Screen_time", t] <= 0.5), ncol=1)} else {elig_time <- as.matrix(rep(1,nsample), ncol=1)}  # Run symptomatic mode for those with m.Rand < 0.5 (half of the people) to ensure equal impact of screen and sympt pathways
     
-    #Reset newly diagnosed for all (two runs for sympt + screen) and move year of diagnosis on by one
-    #New_diag_all <- as.matrix(rep(0, nsample), ncol=1) # nsample - number of individuals in the simulated pop
-    #m.Diag[, "HG_yr_diag"][m.Diag[m.M[,t] !=4, "HG_yr_diag"] >=1] <- m.Diag[, "HG_yr_diag"][m.Diag[m.M[,t] !=4, "HG_yr_diag"] >=1] + 1
-    #m.Diag[, "LG_yr_diag"][m.Diag[m.M[,t] !=4, "LG_yr_diag"] >=1] <- m.Diag[, "LG_yr_diag"][m.Diag[m.M[,t] !=4, "LG_yr_diag"] >=1] + 1
-    
+    # move year of diagnosis on by one
     m.Diag[m.M[,t] != 4, "HG_yr_diag"][m.Diag[m.M[,t] != 4, "HG_yr_diag"] >= 1] <- m.Diag[m.M[,t] != 4, "HG_yr_diag"][m.Diag[m.M[,t] != 4, "HG_yr_diag"] >= 1] + 1
     m.Diag[m.M[,t] != 4, "LG_yr_diag"][m.Diag[m.M[,t] != 4, "LG_yr_diag"] >= 1] <- m.Diag[m.M[,t] != 4, "LG_yr_diag"][m.Diag[m.M[,t] != 4, "LG_yr_diag"] >= 1] + 1
     
     m.Diag <- f.symptom(m.Diag, m.State, m.Rand, pop, t, m.M, elig_time, nsample) 
     
-    # Update the new diag with those just identified in the f.sympt
-    #if(DS_screen ==0){ New_diag_all[,1] <- New_diag_all[,1] +m.Diag[, "HG_new_diag"] + m.Diag[, "LG_new_diag"]}
-    
+  
     # Screening detection
     if(DS_screen ==1){
       
@@ -114,16 +115,14 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
       }
       
       m.Diag <- f.screen_diag(m.Screen, m.State, m.Diag, pop, t)
+      
       # Replace with death for those who died from perforation during TURBT
       m.M[,t+1][which(m.Screen[ ,t+1 , "Die_TURBT"]==1)] <- 4
       # NOTE: currently only a progress to HGBC after the surveillance for 3 years is considered for LGBC. HGBC are only following the survival curve.
       # Not sure whether I need to return to no cancer everyone in the end of the 10 year time period
-      #New_diag_all[,1] <- New_diag_all[,1] +m.Diag[, "HG_new_diag"] + m.Diag[, "LG_new_diag"]
-      
+
       elig_time <- as.matrix(1*(m.Rand[,"Screen_time", t] > 0.5), ncol=1)
       m.Diag <- f.symptom(m.Diag, m.State, m.Rand, pop, t, m.M, elig_time, nsample)
-      #New_diag_all[,1] <- New_diag_all[,1] +m.Diag[, "HG_new_diag"] + m.Diag[, "LG_new_diag"]
-      
     }
     
     # define BC deaths
@@ -132,26 +131,39 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
     new_BC2_death <- 1*((m.Rand[ ,"Death_BC", t] < TP_BC.mort[,"TP.BC.2.mort"]) & m.State[ ,"St2_HG"]>0)
     new_BC3_death <- 1*((m.Rand[ ,"Death_BC", t] < TP_BC.mort[,"TP.BC.3.mort"]) & m.State[ ,"St3_HG"]>0)
     new_BC4_death <- 1*((m.Rand[ ,"Death_BC", t] < TP_BC.mort[,"TP.BC.4.mort"]) & m.State[ ,"St4_HG"]>0)
+    
+    # TP.ungiag.dead - should be betwen -0.001 and -0.05
+    # Update the mortality with a possibility for some BC at stage 4 to be undiagnosed death 
+    died_undiagnosed <- 1*(m.Rand[ ,"Death_BC_undiag", t] < (1-exp(P.ungiag.dead * ((pop[, "age"] - 80) * (1*(pop[, "age"] > 80)))))
+                           & m.Diag[ ,"yr_diag"]==1
+                           & new_BC4_death[]==1)
+    
+    new_BC4_death[died_undiagnosed[] ==1] <-0    
+    
     BC_death_all <- rowSums(cbind(new_BC1_death, new_BC2_death, new_BC3_death, new_BC4_death))
     
     # update with the age of BC death
     m.Diag[, "age_BC_death"] <- m.Diag[, "age_BC_death"] + (pop[, "age"] * BC_death_all) # Record the age of death for those with cancer
-    
+    m.Diag[died_undiagnosed[] ==1, "HG_diag"] <- m.Diag[died_undiagnosed[] ==1, "HG_sympt_diag"] <- 
+      m.Diag[died_undiagnosed[] ==1, "HG_yr_diag"] <-  m.Diag[died_undiagnosed[] ==1, "HG_age_diag"] <-0 # Record the age of death for those with cancer
+
     # Update the mortality for BC (replace with the state 8 in the m.M_8s matrix and state 4 in m.M matrix those who died with BC)
     # In the rare even of the BC perforation during screening, if this patient meant to die from BC during the same cycle it would be counted as BC death
     m.M_8s[, t+1] <- replace(m.M_8s[, t+1], BC_death_all>0, 8) # If died from BC replace to state 8
-    m.M[, t+1] <- replace(m.M[, t+1], m.M_8s[, t+1]==8, 4)
+    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], died_undiagnosed>0, 4) # If died undiagnosed replace with 4 (OCM)
+    m.M[, t+1] <- replace(m.M[, t+1], m.M_8s[, t+1]==8 | died_undiagnosed>0, 4)
     
-    #m.M_8s1[, t+1] <- replace(m.M_8s1[, t+1], BC_death_all>0, 8) # If died from BC replace to state 8
+   #print(which(died_undiagnosed >0))
     
-    
+    if(run_mode != "Calibration" ){
     # Update the QALYs and costs (not half cycle corrected)
     m.E[, t+1] <- f.calc.utility(m.State, m.Diag, pop, t) # Assess effects per individual during the cycle t+1 
     m.C[, t+1] <- f.calc.cost(m.State, m.Diag, m.Cost.treat) # Assess CRC treatment costs per individual during the cycle t+1 (note not half cycle corrected) 
     
     # Gather outcomes for cycle t (total and subgroups)
     m.Out <- f.aggregate.outcomes(m.M_8s, m.Out, m.M, m.E, m.C, m.Diag, m.Screen, m.State, pop, t)
-   
+    }
+    
     # Update the age for only those individuals who are alive
     IND <- m.M[, t+1] != 4
     pop[IND, "age"] <- pop[IND,"age"] +1 # update the age
@@ -192,7 +204,7 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
   
   # Extract the matrices by sex for calibration
   
-  if (run_mode == "Calibration") { #  add additional two matrices to report TR matrix by gender
+  if (run_mode == "Calibration" | run_mode == "Testing") { #  add additional two matrices to report TR matrix by gender
     names_Diag <- c(colnames(m.Diag), "sex", "age")
     m.Diag <- cbind(m.Diag, pop[ ,"sex"], pop[ ,"age_0"])
     colnames(m.Diag) <-names_Diag
@@ -229,7 +241,8 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
   }
   
   results <- switch(run_mode, 
-                    Testing = list(TR_8 = TR_8, TR_4 = TR_4,m.Diag = m.Diag, m.M_8s=m.M_8s, m.M= m.M),
+                    Testing = list(TR_8 = TR_8, TR_4 = TR_4,TR_f = TR_f, TR_m=TR_m, m.Diag = m.Diag, m.M_8s=m.M_8s, m.M= m.M),
+                    Calibration = list(TR_f = TR_f, TR_m=TR_m, m.Diag = m.Diag),
                     Deterministic = m.Out,
                     PSA= m.Out
                     )

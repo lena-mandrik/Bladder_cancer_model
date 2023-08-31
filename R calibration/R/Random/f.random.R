@@ -3,7 +3,7 @@
 
 
 # Search dimensions. Use for random search algorithm only
-lower_boud <- c(0.000001, 0.1, 1.001, 1.001, 0.005, 0.001, 1.01, 0.85, -0.3, rep(1.005,3)) #for symtomatic presentation requires other limits - A <15%, B =5-40%, C=10-60%, D-30-100%
+lower_boud <- c(0.000001, 0.3, 1.001, 1.001, 0.005, 0.001, 1.01, 0.85, -0.3, rep(1.005,3)) #for symtomatic presentation requires other limits - A <15%, B =5-40%, C=10-60%, D-30-100%
 upper_boud <- c(0.001, 0.6, 1.2, 1.9, 0.1, 0.2, 1.9, 1, -0.01, rep(1.5,3))
 
 # Sample using Latin Hypercube

@@ -54,9 +54,6 @@ f.calc.utility <- function(m.State, m.Diag, pop, t) {
   #substract cancer disutility from the individual EQ5D in people with EQ5D >= -0.594. Assume the utilities in people with lower utilities remain so
   v.utility[v.utility >=-0.594] <- (v.utility-disutility_BC)[v.utility >=-0.594]
   
-  #Subtract any transient utility decrements associated with screening (note harm_names defined in set_params)
-  #v.utility <- v.utility + (m.Screen[, t+1, ] %*% m.Utility_harms)
-  
   #Replace any individual EQ5D score below minimum value, with minimum (-0.594)
   v.utility <- replace(v.utility, v.utility < -0.594, -0.594)
   

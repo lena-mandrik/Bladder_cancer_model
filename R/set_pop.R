@@ -24,6 +24,12 @@ f.risk.calc <- function(pop) {
   # Onset of the bladder cancer at time t by age
   pop[, "p.BC.i"] <-(P.onset*P.onset_age^(pop[, "age"] -30))*pop[, "risk"]
   
+  #pop[, "p.BC.i"] <-(P.onset*P.onset_age*(pop[, "age"] -30))*pop[, "risk"]
+  
+  #pop[, "p.BC.i"] <- ifelse(pop[, "age"] <= 70,
+   #                         (P.onset * P.onset_age^(pop[, "age"] - 30)) * pop[, "risk"],
+   #                        (P.onset * P.onset_age^(70 - 30)) * pop[, "risk"])
+  
   #check
   #no_smoke <- rep(0,nrow(pop))
   #no_smoke <- replace(no_smoke, pop[, "past_smoke"] !=1 & pop[, "current_smoke"] !=1, 1)
@@ -53,7 +59,34 @@ f.smoke.change <- function(pop, rand.quit) {
 
 }
 
+####################################################
 
+#' @details
+#' This function calculates the smoking status of the former smokers based on their age when the age is re-set to earlier
+#' @params
+#' pop: population matrix containing individual level attributes
+#' @return Updated pop matrix with updated 
+#' 
+
+f.smoke.initial <- function(pop, m.Rand) {
+  
+  #define for how many years the smoking status should be re-calculated
+  years_dif = pop[,"age_0"]-pop[,"age"]
+  
+  years_dif_cum=matrix(0, nrow=nrow(pop), ncol=1)
+  
+  for(i in 1:nrow(pop)){
+    years_dif_cum[i,1]  = sum(m.Rand[i,"Smoke_quit", 1:years_dif[i]])
+  }
+  
+  # Update smoking status, considering the proportion of smokers who quite smoking during one year
+  status_smoke <- 1*((years_dif_cum[,1] > P.quit.smoke) & pop[,"past_smoke"]==1)
+  pop[,"past_smoke"] <- replace(pop[,"past_smoke"],status_smoke ==1, 0)
+  pop[,"current_smoke"] <- replace(pop[,"current_smoke"], pop[,"no_smoke"]==0 & pop[,"past_smoke"]==0 & status_smoke ==1, 1)
+  
+  return(pop)
+  
+}
 ########################################################
 set_population <- function(population) {
   

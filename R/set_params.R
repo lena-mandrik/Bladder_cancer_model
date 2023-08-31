@@ -4,15 +4,30 @@
 #' This function uses the mean and the shape to calculate the scale and sample from the Weibull distribution 
 
 
-f.Weibull.sample <- function(w_mean, shape, nsample){
+f.Weibull.sample <- function(w_mean, shape.p, nsample){
   
-  scale = w_mean/gamma(1+1/shape)
+  scale.p = w_mean/gamma(1+1/shape.p)
   
-  time_to_state <- rweibull(nsample, shape, scale)
+  time_to_state <- rweibull(nsample, shape.p, scale.p)
   
-  time_to_state
+  return(time_to_state)
   
 }
+
+## An alternative function to sample from Gompertz model
+
+f.Gompertz.sample<- function(w_mean, scale.p, nsample) {
+  
+  r.mean <- runif(nsample)
+  r.scale <- runif(nsample)
+  
+  Gompertz <- 1-exp(-scale.p*(exp(r.mean*w_mean)-1))
+  
+  time_to_state <- reliaR::rgompertz(nsample, w_mean, scale.p)
+  
+  return(time_to_state)
+}
+
 
 #' @details
 #' This function returns a time from onset to the Stage 2,3, and 4 for each person in the model
@@ -24,13 +39,17 @@ f.Weibull.sample <- function(w_mean, shape, nsample){
 f.stage <- function(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.t.StII.StIII, 
                     Mean.t.StIII.StIV, shape.t.StIII.StIV, nsample){
   
+
   T.onsetToStage2 <- f.Weibull.sample(Mean.t.StI.StII, shape.t.StI.StII, nsample)
   T.Stage3 <- f.Weibull.sample(Mean.t.StII.StIII, shape.t.StII.StIII, nsample)
   T.Stage4 <- f.Weibull.sample(Mean.t.StIII.StIV, shape.t.StIII.StIV, nsample)
   
+  # Adjust T.Stage3 and T.Stage4 based on the value of T.onsetToStage2 (i.e. that quicker growing cancers grow quicker at all stages)
+  T.Stage3 <- T.Stage3 * (T.onsetToStage2 / mean(T.onsetToStage2))
+  T.Stage4 <- T.Stage4 * (T.onsetToStage2 / mean(T.onsetToStage2))
+  
   T.onsetToStage3 <- T.onsetToStage2+T.Stage3
   T.onsetToStage4 <- T.onsetToStage3+T.Stage4
-  #v.Stages <- round(cbind(T.onsetToStage2, T.onsetToStage3, T.onsetToStage4)) #
   v.Stages <- cbind(T.onsetToStage2, T.onsetToStage3, T.onsetToStage4) #
   
   v.Stages
@@ -47,13 +66,23 @@ f.stage <- function(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.
 #' 
 f.set_parameters <- function(p.set) {
   
-  for(i in 1:25){ #length(Param.names) for NHD parameters
+  for(i in 1:28){ #length(Param.names) for NHD parameters
     
     vector.Param <- Param_sets[p.set, i]
     names(vector.Param) <- c(Param.names[i])
     
     assign(names(vector.Param), value =vector.Param, envir = .GlobalEnv)
   }
+  
+  # set parameters for the symptomatic diagnosis
+  Symp_params <- c(0,
+                   Param_sets[p.set, "P.sympt.diag_LGBC"],
+                   Param_sets[p.set, "P.sympt.diag_St1"],
+                   0,
+                   Param_sets[p.set, "P.sympt.diag_St2"],
+                   Param_sets[p.set, "P.sympt.diag_St3"],
+                   Param_sets[p.set, "P.sympt.diag_St4"],
+                   0)
   
   #Set the parameters for Dipstick uptake
   coef_DT_Uptk <- c(Param_sets[p.set, "DT.UPTK.CONS"],
@@ -242,6 +271,6 @@ f.generate_parameters <- function(Params, N_sets){
 #' @return an array of random numbers for each event, person and time cycle
 f.generate_random <- function() {
   events <- c("Screen_time", "PROBS", "Smoke_quit", "BCLG_recurrence", "SYMPT_HG", "SYMPT_LG","Death_BC", "Respond_DS", "Positive_DS", 
-              "Respond_diag", "Positive_diag", "Respond_Cyst", "Positive_Cyst", "Die_TURBT")
+              "Respond_diag", "Positive_diag", "Respond_Cyst", "Positive_Cyst", "Die_TURBT", "Death_BC_undiag")
   array(runif(nsample * length(events) * n.t), dim = c(nsample, length(events), n.t), dimnames = list(NULL, events, NULL))
 } 

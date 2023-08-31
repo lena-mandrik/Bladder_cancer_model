@@ -155,14 +155,11 @@ f.DS_screen <- function(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, D
 f.screen_diag <- function(m.Screen, m.State, m.Diag, pop, t) {
   
   #Modify diagnosis columns to include new BC diagnoses from screening and surveillance
-  #m.Diag[, "HG_new_diag"] <- m.Diag[, "HG_new_diag"] +m.Screen[ ,t+1 , "HG"]
   m.Diag[, "HG_yr_diag"] <- m.Diag[, "HG_yr_diag"] + m.Screen[ ,t+1 , "HG"]
   
   # Consider FP as LG, as it is more likely to be LG than HG
   m.Diag[, "LG_yr_diag"] <- m.Diag[, "LG_yr_diag"] + m.Screen[ ,t+1 , "LG"] + m.Screen[ ,t+1 , "FP"]
-  #m.Diag[, "yr_diag"] <- m.Diag[, "yr_diag"] + m.Screen[ ,t+1 , "HG"] + m.Screen[ ,t+1 , "LG"] + m.Screen[ ,t+1 , "FP"]
-  
- 
+
   #mark FP in the m.Diag
   m.Diag[, "FP"] <- m.Diag[, "FP"]+m.Screen[ ,t+1 , "FP"]
   
@@ -172,7 +169,6 @@ f.screen_diag <- function(m.Screen, m.State, m.Diag, pop, t) {
   m.Diag[, "HG_stage_diag"] <- m.Diag[, "HG_stage_diag"] + 
     ((m.State[, "St1_HG"] * 1 + m.State[, "St2_HG"] * 2 + m.State[, "St3_HG"] * 3+ m.State[, "St4_HG"] * 4)* m.Screen[ ,t+1 , "HG"])
   
-  #m.Diag[, "LG_new_diag"] <- m.Diag[, "LG_new_diag"] +m.Screen[ ,t+1 , "LG"] +m.Screen[ ,t+1 , "FP"]
   m.Diag[, "LG_diag"] <- m.Diag[, "LG_diag"] + m.Screen[ ,t+1 , "LG"] +m.Screen[ ,t+1 , "FP"]
   m.Diag[, "LG_screen_diag"] <- m.Diag[, "LG_screen_diag"] + m.Screen[ ,t+1 , "LG"]+m.Screen[ ,t+1 , "FP"]
   m.Diag[, "LG_age_diag"] <- m.Diag[, "LG_age_diag"] + (pop[, "age"] * m.Screen[ ,t+1 , "LG"]) + (pop[, "age"] *m.Screen[ ,t+1 , "FP"])
@@ -189,9 +185,11 @@ f.screen_diag <- function(m.Screen, m.State, m.Diag, pop, t) {
 #re-set the stage at m.M_8s if the patient stage changed at this cycle and progression was to happen in the 2d half of the year
 f.screen.shift <- function(m.M_8s, m.BC.T.to.Stage, m.Screen, m.Diag, t){
   
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t+1]==5 & round(m.BC.T.to.Stage[ ,"T.onsetToStage2"])==m.Diag[,"HG_yr_onset"] & m.BC.T.to.Stage[ ,"T.onsetToStage2"]%%1 > 0.5 & m.Screen[ ,t+1 , "HG"]==1, 3) #get downstage to one stage (previously sampled stage) if time to progression is less than 6 m
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t+1]==6 & round(m.BC.T.to.Stage[ ,"T.onsetToStage3"])==m.Diag[,"HG_yr_onset"] & m.BC.T.to.Stage[ ,"T.onsetToStage3"]%%1 > 0.5 & m.Screen[ ,t+1 , "HG"]==1, 5) #get downstage (previously sampled stage) if time to progression is less than 6 m
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t+1]==7 &round(m.BC.T.to.Stage[ ,"T.onsetToStage4"])==m.Diag[,"HG_yr_onset"] & m.BC.T.to.Stage[ ,"T.onsetToStage4"]%%1 > 0.5 & m.Screen[ ,t+1 , "HG"]==1, 6) #get downstage (previously sampled stage) if time to progression is less than 6 m
+  # concervative way of downstaging one step down
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t+1]==5 & ceiling(m.BC.T.to.Stage[ ,"T.onsetToStage2"])==m.Diag[,"HG_yr_onset"] & m.BC.T.to.Stage[ ,"T.onsetToStage2"]%%1 > 0.5 & m.Screen[ ,t+1 , "HG"]==1, 3) #get downstage to one stage (previously sampled stage) if time to progression is less than 6 m
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t+1]==6 & ceiling(m.BC.T.to.Stage[ ,"T.onsetToStage3"])==m.Diag[,"HG_yr_onset"] & m.BC.T.to.Stage[ ,"T.onsetToStage3"]%%1 > 0.5 & m.Screen[ ,t+1 , "HG"]==1, 5) #get downstage (previously sampled stage) if time to progression is less than 6 m
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t+1]==7 & ceiling(m.BC.T.to.Stage[ ,"T.onsetToStage4"])==m.Diag[,"HG_yr_onset"] & m.BC.T.to.Stage[ ,"T.onsetToStage4"]%%1 > 0.5 & m.Screen[ ,t+1 , "HG"]==1, 6) #get downstage (previously sampled stage) if time to progression is less than 6 m
 
+ 
   return(m.M_8s)
   }

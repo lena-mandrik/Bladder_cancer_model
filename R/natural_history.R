@@ -8,8 +8,9 @@
 #' m.State: matrix containing health states
 #' @return matrix of individualised transition probabilities for each transition
 
-f.calc.indiv.TPs <- function(pop, m.Diag){
+f.calc.indiv.TPs <- function(pop, m.Diag, BC.4.mort){
   
+  # Update OCM with all the factors that impact it
   
   # Other cause mortality transition 
   TP.OC <- OC_mort[paste(pop[,"sex"],pop[,"age"], sep = ""), ]
@@ -18,8 +19,9 @@ f.calc.indiv.TPs <- function(pop, m.Diag){
   TP.OC <- TP.OC*RR.All.Death.no_smoke #RR.All.Death.no_smoke is calibrated 
   TP.OC <- TP.OC*pop[,"no_smoke"] + TP.OC*RR.All.Death.past_smoke*pop[,"past_smoke"] + TP.OC*RR.All.Death.current_smoke*pop[,"current_smoke"]
   
+ 
+  # Retrieve p of cancer onset based on individual factors
   TP.BC_onset <- pop[,"p.BC.i"]
-  
   TP.BCLG <- TP.BC_onset*P.onset_low.risk
   TP.BCHG <- TP.BC_onset*(1-P.onset_low.risk)
   
@@ -32,8 +34,6 @@ f.calc.indiv.TPs <- function(pop, m.Diag){
   TP <- cbind(TP.OC, TP.BCLG, TP.BCHG, TP.LGtoHGBC)
   colnames(TP) <- c("TP.OC", "TP.BCLG", "TP.BCHG", "TP.LGtoHGBC")
   
-  #limit.age <- pop[,"age"] >= 100
-  #TP[pop[,"age"] >= 100, c("TP.OC", "TP.BCLG", "TP.BCHG", "TP.LGtoHGBC")] <- c(1,0,0,0)
   TP[pop[,"age"] >= 100, "TP.OC"] <- 1
   TP[pop[,"age"] >= 100, c("TP.BCLG", "TP.BCHG", "TP.LGtoHGBC")] <- 0
   
@@ -191,9 +191,9 @@ f.HG.stages <- function(m.M_8s, m.BC.T.to.Stage, m.M, m.Diag, t){
   m.M_8s[, t+1] <- m.M[, t+1]
   m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t] ==8, 8) #Replace with BC death those who died with BC before this cycle
   
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & round(m.BC.T.to.Stage[ ,"T.onsetToStage2"])==m.Diag[,"HG_yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==5)) & m.Diag[, "HG_yr_diag"] ==0, 5) #Replace for stage 2
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & round(m.BC.T.to.Stage[ ,"T.onsetToStage3"])==m.Diag[,"HG_yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==6)) & m.Diag[, "HG_yr_diag"] ==0, 6) #Replace for stage 3
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & round(m.BC.T.to.Stage[ ,"T.onsetToStage4"])==m.Diag[,"HG_yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==7)) & m.Diag[, "HG_yr_diag"] ==0, 7) #Replace for stage 4
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & ceiling(m.BC.T.to.Stage[ ,"T.onsetToStage2"])==m.Diag[,"HG_yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==5)) & m.Diag[, "HG_yr_diag"] ==0, 5) #Replace for stage 2
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & ceiling(m.BC.T.to.Stage[ ,"T.onsetToStage3"])==m.Diag[,"HG_yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==6)) & m.Diag[, "HG_yr_diag"] ==0, 6) #Replace for stage 3
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & ceiling(m.BC.T.to.Stage[ ,"T.onsetToStage4"])==m.Diag[,"HG_yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==7)) & m.Diag[, "HG_yr_diag"] ==0, 7) #Replace for stage 4
   
   # replace with the stage for those who were diagnosed assuming that they don't progress
   m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "HG_stage_diag"]==2 & m.M[, t+1] != 4, 5) #replace the stage at diagnosis for those who were diagnosed
@@ -203,3 +203,17 @@ f.HG.stages <- function(m.M_8s, m.BC.T.to.Stage, m.M, m.Diag, t){
   return(m.M_8s)
 }
 
+##################################
+# Function updating the matrix m.BC.T.to.Stage with shorter or longer progression based whether the age is below or above 60
+
+#f.HG.stages <- function(m.BC.T.to.Stage, pop){
+ # speed_by_age =1.0001
+  
+  # Set up benchmark as 60
+ # age_diff_from_benchmark = pop[,"age"] - 60
+  
+ # age_adjustment_factor = ifelse(age_diff_from_benchmark >= 0, speed_by_age*age_diff_from_benchmark, abs(age_diff_from_benchmark) * (1-(speed_by_age-1)))
+  
+#  m.BC.T.to.Stage= m.BC.T.to.Stage*(pop[ ,"age"]-60)*speed_by_age
+#  m.BC.T.to.Stage
+#}

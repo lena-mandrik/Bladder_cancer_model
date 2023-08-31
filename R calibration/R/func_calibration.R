@@ -16,16 +16,7 @@ f.load.start.param <- function(fitted_params, Calibr_parameters){
   Calibr_parameters <- cbind(Calibr_parameters, step_calibr)
   colnames(Calibr_parameters) <- c(names.col_param, "step")
   
-  # Update alpha and beta for parameters with beta distribution
-  #Calibr_parameters["P.onset", "Param1"]=((1-Calibr_parameters["P.onset", "Mean"])/(0.01^2)^2 -1/Calibr_parameters["P.onset", "Mean"])*Calibr_parameters["P.onset", "Mean"]^2
-  #Calibr_parameters["P.onset", "Param2"]=Calibr_parameters["P.onset", "Param1"]*(1/Calibr_parameters["P.onset", "Mean"]-1)
-  
-  #Calibr_parameters["P.onset_low.risk", "Param1"]=((1-Calibr_parameters["P.onset_low.risk", "Mean"])/(0.01^2)^2 -1/Calibr_parameters["P.onset_low.risk", "Mean"])*Calibr_parameters["P.onset_low.risk", "Mean"]^2
- # Calibr_parameters["P.onset_low.risk", "Param2"]=Calibr_parameters["P.onset_low.risk", "Param1"]*(1/Calibr_parameters["P.onset_low.risk", "Mean"]-1)
-  
- # Calibr_parameters["P.LGtoHGBC", "Param1"]=((1-Calibr_parameters["P.LGtoHGBC", "Mean"])/(0.01^2)^2 -1/Calibr_parameters["P.LGtoHGBC", "Mean"])*Calibr_parameters["P.LGtoHGBC", "Mean"]^2
- # Calibr_parameters["P.LGtoHGBC", "Param2"]=Calibr_parameters["P.LGtoHGBC", "Param1"]*(1/Calibr_parameters["P.LGtoHGBC", "Mean"]-1)
-  
+ 
   return(Calibr_parameters)
 }
 
@@ -79,8 +70,8 @@ outcomes_m <- (Reduce('+', outcomes_m) / (length(outcomes_m)))
 outcomes_f <- (Reduce('+', outcomes_f) / (length(outcomes_f)))
 
 # Calculate proportion of LGBC that progressed to HGBC
-c.LG.to.HG <- map(l.Diag, f.LG.to.HG)
-c.LG.to.HG <- (Reduce('+', c.LG.to.HG) / (length(c.LG.to.HG)))
+#c.LG.to.HG <- map(l.Diag, f.LG.to.HG)
+#c.LG.to.HG <- (Reduce('+', c.LG.to.HG) / (length(c.LG.to.HG)))
 
 # Calculate outcomes per population alive
 rate_outcomes_m <- outcomes_m[,2:ncol(outcomes_m)]/as.vector(alive_m) # all outcomes, the column 1 is the age
@@ -93,9 +84,8 @@ colnames(rate_outcomes_f) <- paste0(colnames(rate_outcomes_f), "_female")
 
 
 results <- list(rate_outcomes_m = rate_outcomes_m,
-                rate_outcomes_f = rate_outcomes_f,
-                c.LG.to.HG =c.LG.to.HG)
-
+                rate_outcomes_f = rate_outcomes_f)
+                
 results
 }
 
@@ -110,26 +100,27 @@ results
 f.diag.outcomes <- function(m.Diag, sex){  
   
 # Subset those who were diagnosed for incidence and mortality
-  m.diagnosed <- subset(m.Diag, (m.Diag[ , "BC_diag"] !=0 | m.Diag[ , "LG_BC_diag"] !=0)  & m.Diag[ , "sex"] == sex, select = c("BC_diag", "age_diag", "stage_diag", "LG_BC_diag", "age_LG_BC_diag", "age_BC_death"), drop = FALSE)
-  m.outcomes <-cbind(c(30:100),matrix(0, nrow = 71, ncol = 6))
+  m.diagnosed <- subset(m.Diag, (m.Diag[ , "HG_diag"] !=0 | m.Diag[ , "LG_diag"] !=0)  & m.Diag[ , "sex"] == sex, select = c("HG_diag", "HG_age_diag", "HG_stage_diag", "LG_diag", "LG_age_diag", "age_BC_death"), drop = FALSE)
+  m.outcomes <-cbind(c(30:100),matrix(0, nrow = 71, ncol = 7))
   
 
   for (i in 1: 71){
     # Calculate the incidence by age and sex for HG cancers
-    m.outcomes[i,5] <- sum(m.diagnosed[which(m.diagnosed[,"age_diag"]==m.outcomes[i,1]),"BC_diag"])
-    m.outcomes[i,2] <- sum(m.diagnosed[which(m.diagnosed[,"age_diag"]==m.outcomes[i,1] & m.diagnosed[,"stage_diag"]==1),"BC_diag"])
-    m.outcomes[i,3] <- sum(m.diagnosed[which(m.diagnosed[,"age_diag"]==m.outcomes[i,1] & m.diagnosed[,"stage_diag"]==2),"BC_diag"])
-    m.outcomes[i,4] <- sum(m.diagnosed[which(m.diagnosed[,"age_diag"]==m.outcomes[i,1] & (m.diagnosed[,"stage_diag"]==3|m.diagnosed[,"stage_diag"]==4)),"BC_diag"])
-
+    m.outcomes[i,6] <- sum(m.diagnosed[which(m.diagnosed[,"HG_age_diag"]==m.outcomes[i,1]),"HG_diag"])
+    m.outcomes[i,2] <- sum(m.diagnosed[which(m.diagnosed[,"HG_age_diag"]==m.outcomes[i,1] & m.diagnosed[,"HG_stage_diag"]==1),"HG_diag"])
+    m.outcomes[i,3] <- sum(m.diagnosed[which(m.diagnosed[,"HG_age_diag"]==m.outcomes[i,1] & m.diagnosed[,"HG_stage_diag"]==2),"HG_diag"])
+    m.outcomes[i,4] <- sum(m.diagnosed[which(m.diagnosed[,"HG_age_diag"]==m.outcomes[i,1] & m.diagnosed[,"HG_stage_diag"]==3),"HG_diag"])
+    m.outcomes[i,5] <- sum(m.diagnosed[which(m.diagnosed[,"HG_age_diag"]==m.outcomes[i,1] & m.diagnosed[,"HG_stage_diag"]==4),"HG_diag"])
+    
     # Calculate the incidence of LG cancers by age and sex
-    m.outcomes[i,6] <- sum(m.diagnosed[which(m.diagnosed[,"age_LG_BC_diag"]==m.outcomes[i,1]),"LG_BC_diag"])
+    m.outcomes[i,7] <- sum(m.diagnosed[which(m.diagnosed[,"LG_age_diag"]==m.outcomes[i,1]),"LG_diag"])
     
     # Calculate the mortality from BC by age
-    m.outcomes[i,7] <- sum(m.diagnosed[which(m.diagnosed[,"age_BC_death"]==m.outcomes[i,1]),"BC_diag"])
+    m.outcomes[i,8] <- sum(m.diagnosed[which(m.diagnosed[,"age_BC_death"]==m.outcomes[i,1]),"HG_diag"])
     
       } 
   
-  colnames(m.outcomes) <- c("Age", "Bc_stage1", "BC_stage2", "BC_stage3.4", "BC_total", "BC_LG", "BC_death")
+  colnames(m.outcomes) <- c("Age", "Bc_stage1", "BC_stage2", "BC_stage3", "BC_stage4", "BC_total", "BC_LG", "BC_death")
                             
   m.outcomes
 }
@@ -162,16 +153,18 @@ f.undiag.BC <- function(m.Diag, sex){
 
 f.LG.to.HG <- function(m.Diag){  
 
-  m.diagnosed <- subset(m.Diag, (m.Diag[ , "BC_diag"] !=0 | m.Diag[ , "LG_BC_diag"] !=0), select = c("BC_diag", "age_diag", "stage_diag", "LG_BC_diag", "age_LG_BC_diag", "age_BC_death"), drop = FALSE)
+  m.diagnosed <- subset(m.Diag, (m.Diag[ , "HG_diag"] !=0 | m.Diag[ , "LG_diag"] !=0), select = c("HG_diag", "HG_age_diag", "HG_stage_diag", "LG_diag", 
+                                                                                                  "LG_age_diag", "age_BC_death"), drop = FALSE)
   
   # Calculate the proportion of LG cancers that progressed to HG cancers
-  LG_to_HR_cancers <- sum(m.diagnosed[ ,"LG_BC_diag"]& m.diagnosed[ ,"BC_diag"])/sum(m.diagnosed[ ,"LG_BC_diag"])
+  LG_to_HR_cancers <- sum(m.diagnosed[ ,"LG_diag"]& m.diagnosed[ ,"HG_diag"])/sum(m.diagnosed[ ,"LG_diag"])
   
   LG_to_HR_cancers
 }
 
 
 # function to transform Targets in the short format (by age group) to the long format (by each age)
+
 
 f.targets.per.alive.long <- function(target.data, start_age, end_age, n_by) {
   
@@ -191,7 +184,7 @@ f.targets.per.alive.long <- function(target.data, start_age, end_age, n_by) {
       start <- c(start, extrapolation)
     }
     
-    start <- c(start[-1],start[length(start)]) # there is an atrifact of extrapolation; need to figure out why
+    #start <- c(start[-1],start[length(start)]) # there is an atrifact of extrapolation; need to figure out why
     
     output <- cbind(output,start)
     
@@ -437,8 +430,152 @@ f.GOF.calc <- function(run, m.GOF, Targets, SE, Predict){
     distribution <- dnorm(x = Targets[,n], mean = Predict[,n], sd = SE[,n], log = T)
     distribution[which(!is.finite(distribution))] <-0 # replace with zero infinite and undefined numbers
     m.GOF[run,n]<- sum(distribution)
-    #m.GOF[run,n]<- sum(dnorm(x = Targets[,n], mean = Prediction[,n], sd = SE[,n], log = T))
   }
   m.GOF
 }
 
+
+##################################################
+
+# Function to calculate prevalence
+
+f.valid.output <- function(list_results){
+  
+  l.Diag <- map(list_results, ~.x$m.Diag)
+  TR_m <- map(list_results, ~.x$TR_m)
+  TR_f <- map(list_results, ~.x$TR_f)
+  
+  # Get pop alive pop and average from the lists
+  alive_m <- map(TR_m, function(x) as.matrix(Cohort_m*rowSums(x[ , c(1:3,5:7)])))
+  alive_f <- map(TR_f, function(x) as.matrix(Cohort_f*rowSums(x[ , c(1:3,5:7)])))
+  alive_m <- Reduce('+', alive_m) / (length(alive_m))
+  alive_f <- Reduce('+', alive_f) / (length(alive_f))
+  
+  # Calculate total prevalence including undiagnosed 
+  prev_m <- ((Reduce('+', TR_m) / (length(TR_m))))[,c(2,3,5,6,7)]
+  prev_f <- ((Reduce('+', TR_f) / (length(TR_f))))[,c(2,3,5,6,7)]
+  
+  # Calculate undiagnosed states
+  undiag_m <- map(l.Diag, f.undiag.BC, 1)
+  undiag_f <- map(l.Diag, f.undiag.BC, 0)
+  undiag_m <- ((Reduce('+', undiag_m) / (length(undiag_m))))
+  undiag_m <- undiag_m[,1]/alive_m[,1]
+  undiag_f <- ((Reduce('+', undiag_f) / (length(undiag_f))))
+  undiag_f <- undiag_f[,1]/alive_f[,1]
+  
+  # Calculate mean time to symptoms or death for everyone with onset
+  time.to.symptoms_onset <- map(l.Diag, f.time.to.symptoms, "HG_state")
+  time.to.symptoms_onset <- Reduce('+', time.to.symptoms_onset) / length(time.to.symptoms_onset)
+  time.to.symptoms_onset <- cbind(time.to.symptoms_onset[ ,1], time.to.symptoms_onset[ ,2]-time.to.symptoms_onset[ ,3])
+  
+  # Calculate mean time to symptoms for everyone diagnosed
+  time.to.symptoms_diag <- map(l.Diag, f.time.to.symptoms, "HG_diag")
+  time.to.symptoms_diag <- Reduce('+', time.to.symptoms_diag) / length(time.to.symptoms_diag)
+  time.to.symptoms_diag <- cbind(time.to.symptoms_diag[ ,1], time.to.symptoms_diag[ ,2]-time.to.symptoms_diag[ ,3])
+  
+  # Assess the mean time across ages for everyone diagnosed
+  mean_time=map(l.Diag, f.mean.time.to.symptoms, "HG_state")
+  
+  # Calcuulate proportion diagnosed
+  
+  p.diagnosed <- map(l.Diag, f.p.diagnosed)
+  p.diagnosed <- Reduce('+', p.diagnosed) / length(p.diagnosed)
+  
+  results <- list(prev_m = prev_m,
+                  prev_f = prev_f,
+                  undiag_m =undiag_m,
+                  undiag_f=undiag_f,
+                  p.diagnosed=p.diagnosed,
+                  time.to.symptoms_onset=time.to.symptoms_onset,
+                  time.to.symptoms_diag=time.to.symptoms_diag,
+                  mean_time=mean_time)
+  
+  results
+}
+
+
+################################################################
+# @ input: the output of run_simulation: m.Diag , sex 1 - males, 0 - females
+# @ output:  rates of undiagnosed HG cancer 
+
+f.undiag.BC <- function(m.Diag, sex){  
+  
+  
+  # Subset those who are undiagnosed for undiagnosed cancer prevalence
+  m.undiagnosed_HG <- subset(m.Diag, m.Diag[ , "HG_yr_onset"] !=0 & m.Diag[ , "sex"] == sex, select = c("HG_age_diag", "HG_diag", "HG_age_onset"), drop = FALSE)
+  m.undiagnosed_LG <- subset(m.Diag, m.Diag[ , "LG_age_onset"] !=0 & m.Diag[ , "sex"] == sex, select = c("LG_age_diag", "LG_diag", "LG_age_onset"), drop = FALSE)
+  
+  m.undiag <-cbind(c(30:100),matrix(0, nrow = 71, ncol = 2))
+  
+  
+  for (i in 1: 71){
+    # Calculate undiagnosed High grade cancer
+    m.undiag[i,2] <- sum(m.undiagnosed_HG[which(m.undiagnosed_HG[,"HG_age_onset"]<=m.undiag[i,1] & m.undiagnosed_HG[,"HG_age_diag"] >m.undiag[i,1]),"HG_diag"])
+    m.undiag[i,3] <- sum(m.undiagnosed_LG[which(m.undiagnosed_LG[,"LG_age_onset"]<=m.undiag[i,1] & m.undiagnosed_LG[,"LG_age_diag"] >m.undiag[i,1]),"LG_diag"])
+    
+    } 
+  
+  colnames(m.undiag) <- c("Age", "Undiag_HGBC", "Undiag_LGBC")
+  
+  m.undiag
+}
+
+###################################################################################
+# Function to calculate the rate of LG BC progressed to HRBG from all LGBR
+
+f.LG.to.HG <- function(m.Diag){  
+  
+  m.diagnosed <- subset(m.Diag, (m.Diag[ , "BC_diag"] !=0 | m.Diag[ , "LG_diag"] !=0), select = c("BC_diag", "age_diag", "stage_diag", "LG_diag", "age_LG_diag", "age_BC_death"), drop = FALSE)
+  
+  # Calculate the proportion of LG cancers that progressed to HG cancers
+  LG_to_HR_cancers <- sum(m.diagnosed[ ,"LG_diag"]& m.diagnosed[ ,"BC_diag"])/sum(m.diagnosed[ ,"LG_diag"])
+  
+  LG_to_HR_cancers
+}
+
+
+#######################################################################################
+
+#########################################################
+# Calculate mean time to symptoms from onset for everyone with onset
+
+
+f.time.to.symptoms <- function(m.Diag, name){ 
+  
+  m.BC <- subset(m.Diag, m.Diag[ ,name] >0) #either "BC_state" or "BC_diag"
+  # Subset those who are undiagnosed for undiagnosed cancer prevalence
+  
+  m.outcomes <-cbind(c(30:100),matrix(0, nrow = 71, ncol = 2))
+  
+  for (i in 1: 71){
+    m.outcomes[i,2] <- mean(m.BC[which(m.BC[,"HG_age_onset"]==m.outcomes[i,1]),"HG_yr_onset"]) #all HG cancers
+    m.outcomes[i,3] <- mean(m.BC[which(m.BC[,"HG_age_onset"]==m.outcomes[i,1]),"HG_yr_diag"]) #all HG cancers
+  }
+  
+  m.outcomes[is.na(m.outcomes)] <- 0
+  colnames(m.outcomes) <- c("Age", "yr_onset", "yr_diag")
+  m.outcomes
+}
+########################################################
+
+f.mean.time.to.symptoms <- function(m.Diag, name){ 
+  
+  m.BC <- subset(m.Diag, m.Diag[ ,name] >0) #either "BC_state" or "BC_diag"
+  # Subset those who are undiagnosed for undiagnosed cancer prevalence
+  
+    mean_ons <- mean(m.BC[,"HG_yr_onset"]) #all HG cancers
+    mean_diag <- mean(m.BC[,"HG_yr_diag"]) #all HG cancers
+  
+  mean_out= mean_ons-mean_diag
+  
+  print(mean_out)
+}
+#####################################
+# Calculate proportion diagnosed
+
+f.p.diagnosed <-function(m.Diag){  
+  p.diagnosed <- sum(m.Diag[, "HG_diag"])/sum(m.Diag[, "HG_state"])
+  p.diagnosed
+}
+
+###########

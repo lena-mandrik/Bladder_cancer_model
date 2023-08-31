@@ -1,0 +1,55 @@
+---
+title: "R Notebook"
+output: html_notebook
+Updates of the model (19/07/23)
+
+1. f.smoke.initial is added. This function re-sets the smoking status of former smokers to smokers at age 30 based on the probability to quit
+
+Almost everyone (except 1 in HSE). This though contradicts to MIMIC assumption that everyone quits smoking before age 30.
+
+See the file set_pop.
+
+Question: is it better to have stable smoking or quit smoking. It will impact calibration so should be set up now.
+
+
+2. Time to the next stae was adjusted depending how slow or quick is progression from stage 1 to stage 2
+
+  # Adjust T.Stage3 and T.Stage4 based on the value of T.onsetToStage2 (i.e. that quicker growing cancers grow quicker at all stages)
+  T.Stage3 <- T.Stage3 * (T.onsetToStage2 / mean(T.onsetToStage2))
+  T.Stage4 <- T.Stage4 * (T.onsetToStage2 / mean(T.onsetToStage2))
+  
+  
+  3. Should slower progression to later stages be considered for older ages and quicker for younger ages
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+
+f.smoke.initial <- function(pop, m.Rand) {
+  
+  #define for how many years the smoking status should be re-calculated
+  years_dif = pop[,"age_0"]-pop[,"age"]
+  
+  years_dif_cum=matrix(0, nrow=nrow(pop), ncol=1)
+  
+  for(i in 1:nrow(pop)){
+    years_dif_cum[i,1]  = sum(m.Rand[i,"Smoke_quit", 1:years_dif[i]])
+  }
+  
+  # Update smoking status, considering the proportion of smokers who quite smoking during one year
+  status_smoke <- 1*((years_dif_cum[,1] > P.quit.smoke) & pop[,"past_smoke"]==1)
+  pop[,"past_smoke"] <- replace(pop[,"past_smoke"],status_smoke ==1, 0)
+  pop[,"current_smoke"] <- replace(pop[,"current_smoke"], pop[,"no_smoke"]==0 & pop[,"past_smoke"]==0 & status_smoke ==1, 1)
+  
+  return(pop)
+  
+}```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
