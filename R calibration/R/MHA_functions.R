@@ -6,49 +6,34 @@ likelihood = function(Calibr_parameters){
   
   source("R calibration\\Main_model_calibration.R") # run the model
   
-   Predict <- f.calibr.output(results_no_screen) # extract the outputs
-   output <- cbind(Predict$rate_outcomes_m, Predict$rate_outcomes_f)
+  output <- f.calibr.output(results_no_screen) # extract the outputs
   
-  #sum by 5 years
+  Predict <- cbind(output$rate_outcomes_m, output$rate_outcomes_f) #data prediction with given parameters
+  if(target_stat=="counts"){Predict <- as.matrix(sum_age_predictions(Predict, England.pop))}
+ 
   
-  #Calculate the predictions by 5-year
-  outputs_by_5 <- matrix(0, ncol=(ncol(Targets)), nrow=nrow(Targets))
+  #likelihood <- f.GOF.MHA.calc(Targets, SE, Predict)  # log likelihood instead of sum of squared errors
   
-  # get the counter for matrix of data
-  n.out=1
+  #sum_likelihoods = sum(likelihood)
   
-  for(i.row in 1:(nrow(Targets)-1)){
-    for(i.col in 1:ncol(Targets)){
-      
-      outputs_by_5[i.row,i.col] = mean(output[n.out:(n.out+4),i.col]) #
-    }
-    n.out=n.out+5
+  # Calculate the likelihood as the sum of log-likelihoods for each target variable
+  log_likelihood <- 0
+  
+  for (i in 1:ncol(Targets)) {
+    obs <- Targets[, i]
+    sd <- SE[, i]
+    pred <- Predict[, i]
     
+    # Calculate the log-likelihood for this target variable
+    log_lik <- sum(dnorm(x = obs, mean = pred, sd = sd, log = TRUE))
+    
+    # Add a penalty term for extreme deviations
+    penalty <- sum((obs - pred)^2)  # You can adjust the penalty term as needed
+    
+    log_likelihood <- log_likelihood + log_lik - penalty
   }
   
-  #name rows and columns
-  colnames(outputs_by_5) <- colnames(Predict)
-  rownames(outputs_by_5) <- rownames(Targets)
-  
-
-  if(target_stat=="counts"){
-   # Predict <- Predict[1:61, ]
-    outputs_by_5[ ,1:7] <-outputs_by_5[ ,1:7]*England.pop[,"Males"]*1000
-    outputs_by_5[ ,8:14] <-outputs_by_5[ ,8:14]*England.pop[,"Females"]*1000    }
-  
-  # Exclude mortality from calibration targets
-  #if(target_stat=="counts"){
- # Predict <- Predict[1:12, c(1:6,8:13)]
-  #m.GOF <- m.GOF[ ,c(1:6,8:13)]
- # SE <- SE[1:12,c(1:6,8:13)]
- # Targets <- Targets[1:12, c(1:6,8:13)]
- # }
-  
-  likelihood <- f.GOF.MHA.calc(Targets, SE, outputs_by_5)  # log likelihood instead of sum of squared errors
-  
-  sum_likelihoods = sum(likelihood)
-  
-  return(sum_likelihoods)
+  return(log_likelihood)
 
 }
 
@@ -96,9 +81,9 @@ f.GOF.MHA.calc <- function(Targets, SE, Predict){
     distribution[which(!is.finite(distribution))] <-0 # replace with zero infinite and undefined numbers
     v.GOF[n]<- sum(distribution)  }
   
-  # Add more weight to incidence total
-  v.GOF[c("incidence.male","incidence.fem")]=v.GOF[c("incidence.male","incidence.fem")]*10
-  v.GOF[c("BC.death.male","BC.death.female")]=v.GOF[c("BC.death.male","BC.death.female")]*30
+  # Add more weight to incidence total and mortality
+  v.GOF[c(5:6,11:12)]=v.GOF[c(5:6,11:12)]*20
+  v.GOF[c(1:2,7:9,14)]=v.GOF[c(1:2,7:9,14)]*10
   
   
   v.GOF
@@ -130,15 +115,13 @@ f.prior = function(fitted_params){ #uniform distribution for priors
 
 # Weak priors
 
-  #  prior.weak <- dunif(fitted_params["P.LGtoHGBC",1], min=fitted_params["P.LGtoHGBC",1]*0.9, max=fitted_params["P.LGtoHGBC",1]*1.1, log = T)
+    prior.weak <- dunif(fitted_params["P.LGtoHGBC",1], min=fitted_params["P.LGtoHGBC",1]*0.9, max=fitted_params["P.LGtoHGBC",1]*1.1, log = T)
  
 # Strong priors
- penalty = -1000
+ penalty = -10000000
  
     count.conditions = 
       (fitted_params["P.sympt.diag_LGBC",1] >0.2)*1+
-      (fitted_params["P.ungiag.dead",1] < -0.01)*1+
-      (fitted_params["P.onset_low.risk",1] < 0.6)*1+
       (fitted_params["P.sympt.diag_LGBC",1] > fitted_params["P.sympt.diag_St1",1])*1+
       (fitted_params["P.sympt.diag_St1",1] > fitted_params["P.sympt.diag_St2",1])*1 +
       (fitted_params["P.sympt.diag_St2",1] > fitted_params["P.sympt.diag_St3",1])*1+
@@ -147,20 +130,14 @@ f.prior = function(fitted_params){ #uniform distribution for priors
       (fitted_params["P.sympt.diag_St2",1] <0.05)*1+ (fitted_params["P.sympt.diag_St2",1] >0.4)*1+
       (fitted_params["P.sympt.diag_St3",1] <0.1)*1+ (fitted_params["P.sympt.diag_St3",1] >0.7)*1+
       (fitted_params["P.sympt.diag_St4",1] <0.3)*1+ (fitted_params["P.sympt.diag_St3",1] >0.9)*1+
-      (fitted_params["P.onset_age",1]<1)*1+ (fitted_params["P.onset_age",1]>1.16)*1+
+      (fitted_params["P.onset_age",1]<1)*1+ (fitted_params["P.onset_age",1]>1.15)*1+
       (fitted_params["RR.onset_sex",1]<1)*1+ (fitted_params["RR.onset_sex",1]>5)*1+
       (fitted_params["P.sympt.diag_Age",1]< 0.9)*1+
       (fitted_params["shape.t.StI.StII",1] >1)*1+
       (fitted_params["shape.t.StII.StIII",1]>1)*1+
       (fitted_params["shape.t.StIII.StIV",1]>1)*1
     
-    #Add priors for the mean
-    mean.prior1 = (fitted_params["Mean.t.StII.StIII",1] -fitted_params["Mean.t.StI.StII",1])/fitted_params["Mean.t.StI.StII",1]
-    mean.prior2 = (fitted_params["Mean.t.StIII.StIV",1] -fitted_params["Mean.t.StII.StIII",1])/fitted_params["Mean.t.StII.StIII",1]
-    condition.mean = (mean.prior1 >0.5 | mean.prior2 >0.5)*1
-    prior.mean = if(condition.mean==1){-500*mean.prior1+-500*mean.prior2}else{0}
-    
-    prior <- count.conditions*penalty + prior.mean
+    prior.strong <- count.conditions*penalty
     
  #prior.strong = if(fitted_params["P.onset",1] <0|
    #fitted_params["P.sympt.diag_LGBC",1] >0.2|
@@ -184,7 +161,7 @@ f.prior = function(fitted_params){ #uniform distribution for priors
   # fitted_params["shape.t.StII.StIII",1] <0  |fitted_params["shape.t.StII.StIII",1]>1|
   # fitted_params["shape.t.StIII.StIV",1] <0 | fitted_params["shape.t.StIII.StIV",1]>1){ (-5000000)} else{(0)} #replace with  -Inf
  
-return(sum(prior))
+return(sum(prior.weak, prior.strong))
 }
 
 
@@ -217,13 +194,7 @@ f.proposal.param = function(param, MHA.step){
    
    param[c(3,4) ,"Mean"] <- rnorm(2, mean = param[c(3,4),"Mean"], sd= MHA.step*param[c(3,4),"Mean"])
    
-   param["Mean.t.StI.StII", "Mean"] <- truncnorm::rtruncnorm(1, a = 1, b = 7,
-                                                  mean = param["Mean.t.StI.StII", "Mean"], sd = MHA.step * param["Mean.t.StI.StII", "Mean"])
-   param["Mean.t.StII.StIII", "Mean"] <- truncnorm::rtruncnorm(1, a = 1, b = 5,
-                                                             mean = param["Mean.t.StII.StIII", "Mean"], sd = MHA.step * param["Mean.t.StII.StIII", "Mean"])
-   param["Mean.t.StIII.StIV", "Mean"] <- truncnorm::rtruncnorm(1, a = 0, b = 4,
-                                                             mean = param["Mean.t.StIII.StIV", "Mean"], sd = MHA.step * param["Mean.t.StIII.StIV", "Mean"])
-   
+
   return(param)
   
 }

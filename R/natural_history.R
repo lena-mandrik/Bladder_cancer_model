@@ -8,10 +8,9 @@
 #' m.State: matrix containing health states
 #' @return matrix of individualised transition probabilities for each transition
 
-f.calc.indiv.TPs <- function(pop, m.Diag, BC.4.mort){
+f.calc.indiv.TPs <- function(pop, m.Diag, disease){
   
   # Update OCM with all the factors that impact it
-  
   # Other cause mortality transition 
   TP.OC <- OC_mort[paste(pop[,"sex"],pop[,"age"], sep = ""), ]
   
@@ -21,21 +20,27 @@ f.calc.indiv.TPs <- function(pop, m.Diag, BC.4.mort){
   
  
   # Retrieve p of cancer onset based on individual factors
-  TP.BC_onset <- pop[,"p.BC.i"]
-  TP.BCLG <- TP.BC_onset*P.onset_low.risk
-  TP.BCHG <- TP.BC_onset*(1-P.onset_low.risk)
+  TP.BCLG <- TP.BCHG <- TP.KC <- rep(0, nsample)
+  
+  if(disease=="bladder" | disease=="bladder_kidney"){
+    TP.BCLG <- pop[,"p.BC.i"]*e.BC$P.onset_low.risk
+    TP.BCHG <- pop[,"p.BC.i"]*(1-e.BC$P.onset_low.risk)
+  }
   
   # Add individual TP for LG to HG cancer based on whether a patient has been diagnosed or not 
   # LG cancers currently don't progress to HG cancers if they are detected unless the period of surveillance passed (2y) in which case they are considered as recurrent LG progressed to HG
-  TP.LGtoHGBC <- as.matrix(rep(0, nsample), ncol=1) 
-  TP.LGtoHGBC[,1] <- replace(TP.LGtoHGBC[,1], m.Diag[ ,"LG_diag"]==0, P.LGtoHGBC) # set probability for those who hasn't been diagnosed yet
-  TP.LGtoHGBC[,1] <- replace(TP.LGtoHGBC[,1], m.Diag[ ,"LG_diag"]==1 & (pop[,"age"]-m.Diag[ ,"LG_age_diag"])>1, P.LGtoHGBC*P.Recurrence.LR) # set probability of recurrence and progression to HG for those who were diagnosed, after 1 year of surveillance when the p is assumed to be zero
+  TP.LGtoHGBC <- as.matrix(rep(0, nsample), ncol=1)
   
-  TP <- cbind(TP.OC, TP.BCLG, TP.BCHG, TP.LGtoHGBC)
-  colnames(TP) <- c("TP.OC", "TP.BCLG", "TP.BCHG", "TP.LGtoHGBC")
+  if(disease=="bladder" | disease=="bladder_kidney"){
+  TP.LGtoHGBC[,1] <- replace(TP.LGtoHGBC[,1], m.Diag[ ,"LG_diag"]==0, e.BC$P.LGtoHGBC) # set probability for those who hasn't been diagnosed yet
+  TP.LGtoHGBC[,1] <- replace(TP.LGtoHGBC[,1], m.Diag[ ,"LG_diag"]==1 & (pop[,"age"]-m.Diag[ ,"LG_age_diag"])>1, e.BC$P.LGtoHGBC*e.BC$P.Recurrence.LR) # set probability of recurrence and progression to HG for those who were diagnosed, after 1 year of surveillance when the p is assumed to be zero
+  }
+  
+  TP <- cbind(TP.OC, TP.BCLG, TP.BCHG, TP.LGtoHGBC, pop[,"p.KC.i"])
+  colnames(TP) <- c("TP.OC", "TP.BCLG", "TP.BCHG", "TP.LGtoHGBC", "TP.KC")
   
   TP[pop[,"age"] >= 100, "TP.OC"] <- 1
-  TP[pop[,"age"] >= 100, c("TP.BCLG", "TP.BCHG", "TP.LGtoHGBC")] <- 0
+  TP[pop[,"age"] >= 100, c("TP.BCLG", "TP.BCHG", "TP.LGtoHGBC", "TP.KC")] <- 0
   
   TP
 }
@@ -84,21 +89,23 @@ f.Probs <- function(m.M, TP) {
   
   # M_it:    health state occupied by individual i at cycle t (character variable) 
   
-  
   a.p.it <- array(data = NA, dim = c(nsample, n.s, n.s)) # create array of state transition probabilities   
   
   # update m.p.it with the appropriate probabilities (for now there is no probability to die from BC except you are in Clinical state)
   
-  a.p.it[, 1,]  <- matrix(nrow = nsample, ncol = n.s, c(1 - TP[, "TP.BCLG"]- TP[, "TP.BCHG"] - TP[, "TP.OC"], TP[, "TP.BCLG"], TP[, "TP.BCHG"], TP[, "TP.OC"]))
+  a.p.it[, 1,]  <- matrix(nrow = nsample, ncol = n.s, c(1 - TP[, "TP.BCLG"]- TP[, "TP.BCHG"]- TP[, "TP.KC"] - TP[, "TP.OC"], TP[, "TP.BCLG"], TP[, "TP.BCHG"], TP[, "TP.KC"], TP[, "TP.OC"]))
   # Transition probabilities in the state No cancer (STATE 1)
   
-  a.p.it[, 2,]  <- matrix(nrow = nsample, ncol = n.s, c(rep(0, nsample), 1 - TP[, "TP.LGtoHGBC"] - TP[, "TP.OC"], TP[, "TP.LGtoHGBC"], TP[, "TP.OC"]))
+  a.p.it[, 2,]  <- matrix(nrow = nsample, ncol = n.s, c(rep(0, nsample), 1 - TP[, "TP.LGtoHGBC"] - TP[, "TP.OC"], TP[, "TP.LGtoHGBC"], rep(0, nsample), TP[, "TP.OC"]))
   # Transition probabilities in the state low grade bladder cancer (STATE 2)
   
-  a.p.it[, 3,]   <- matrix(nrow = nsample, ncol = n.s, c(rep(0,nsample*2), 1 - TP[, "TP.OC"], TP[, "TP.OC"]))     
+  a.p.it[, 3,]   <- matrix(nrow = nsample, ncol = n.s, c(rep(0,nsample*2), 1 - TP[, "TP.OC"], rep(0, nsample), TP[, "TP.OC"]))     
   # Transition probabilities in the state high grade bladder cancer (sTATE 3)
   
-  a.p.it[, 4,]   <- matrix(nrow = nsample, ncol = n.s,  c(rep(0,3),1), byrow = TRUE)
+  a.p.it[, 4,]  <- matrix(nrow = nsample, ncol = n.s, c(rep(0,nsample*3), 1 - TP[, "TP.OC"], TP[, "TP.OC"]))
+  # Transition probabilities in the state Kidney cancer (STATE 4)
+  
+  a.p.it[, 5,]   <- matrix(nrow = nsample, ncol = n.s,  c(rep(0,4),1), byrow = TRUE)
   # Transition probabilities in the state mortality
   
   # Add to the TP sampling of the time to the next stage and allocation of the stages for everyone who has cancer onset
@@ -163,21 +170,25 @@ f.recurrence.LGBC <- function(m.Diag, nsample, t, P.Recurrence.LR){
 f.onset.Diag <- function(m.Diag, m.M, pop, t){
   
   # Record the characteristics of onset for HG cancer
-  m.Diag[, "HG_yr_onset"][m.Diag[, "HG_yr_onset"] >=1] <- m.Diag[, "HG_yr_onset"][m.Diag[, "HG_yr_onset"] >=1] +1 #Update the year of onset if the cancer developed the previous years
+  m.Diag[, "yr_onset"][m.Diag[, "yr_onset"] >=1] <- m.Diag[, "yr_onset"][m.Diag[, "yr_onset"] >=1] +1 #Update the year of onset if the cancer developed the previous years
+  
+  # Add new individuals with HGBC
   new_HG <-  1*(m.M[, t+1] ==3 & m.M[, t] != 3)
-  m.Diag[, "HG_yr_onset"] <- m.Diag[, "HG_yr_onset"] + new_HG
-  
-  # Mark those individuals who just had BC onset
-  m.Diag[, "HG_age_onset"] <- m.Diag[, "HG_age_onset"] + (pop[, "age"] * new_HG)  
-  
-  # Mark in m.Diag all persons with BC (independently on diagnosis)
-  m.Diag[ ,"HG_state"] <- replace(m.Diag[ ,"HG_state"], m.Diag[ ,"HG_yr_onset"] >0, 1)
-  
-  # Mark age of those individuals who just had LG onset
+  # Add new individuals with LG onset
   new_LG <- m.M[ ,t+1]==2 & m.M[ ,t]==1
+  # Add new individuals with KC onset
+  new_KC <- m.M[ ,t+1]==4 & m.M[ ,t]==1
   
-  # Record the characteristics of onset for LG cancer
-  m.Diag[, "LG_state"][which(new_LG)] <- 1
+  # Mark in m.Diag all persons with HGBC, LGBC, KC (independently on diagnosis)
+  m.Diag[ ,"HG_state"][which(new_HG>0)] <- 1 # <- replace(m.Diag[ ,"HG_state"], new_HG >0, 1)
+  m.Diag[, "LG_state"][which(new_LG>0)] <- 1
+  m.Diag[, "KC_state"][which(new_KC>0)] <- 1
+  
+  # year of onset for each cancer
+  m.Diag[, "yr_onset"] <- m.Diag[, "yr_onset"] + new_HG + new_LG + new_KC
+  
+  # Record age for those individuals who just had BC or KC onset
+  m.Diag[, "age_onset"] <- m.Diag[, "age_onset"] + (pop[, "age"] * new_HG)+ (pop[, "age"] * new_KC)   
   m.Diag[, "LG_age_onset"] <- m.Diag[, "LG_age_onset"] + (pop[, "age"] * new_LG) 
   
   return(m.Diag)
@@ -185,24 +196,53 @@ f.onset.Diag <- function(m.Diag, m.M, pop, t){
   
 
 #######################
+# Function for allocating HG BC states
+############################
+
 f.HG.stages <- function(m.M_8s, m.BC.T.to.Stage, m.M, m.Diag, t){
   
   # Update m.M_8s matrix with the states for those who have HG cancer
   m.M_8s[, t+1] <- m.M[, t+1]
+  m.M_8s[, t+1][which(m.M[, t+1]==4)] <- 1 #Replace with 1 (No bladder cancer) for all with kidney cancer
   m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t] ==8, 8) #Replace with BC death those who died with BC before this cycle
   
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & ceiling(m.BC.T.to.Stage[ ,"T.onsetToStage2"])==m.Diag[,"HG_yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==5)) & m.Diag[, "HG_yr_diag"] ==0, 5) #Replace for stage 2
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & ceiling(m.BC.T.to.Stage[ ,"T.onsetToStage3"])==m.Diag[,"HG_yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==6)) & m.Diag[, "HG_yr_diag"] ==0, 6) #Replace for stage 3
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], ((m.M[, t+1]==3 & ceiling(m.BC.T.to.Stage[ ,"T.onsetToStage4"])==m.Diag[,"HG_yr_onset"])| (m.M[, t+1]==3 & m.M_8s[, t]==7)) & m.Diag[, "HG_yr_diag"] ==0, 7) #Replace for stage 4
+  # Replace with the relevant stages for those who were not diagnosed but has cancer
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==3 & m.Diag[,"HG_state"]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.BC.T.to.Stage[ ,"T.onsetToStage2"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==5)), 4) #Replace for stage 2
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==3 & m.Diag[,"HG_state"]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.BC.T.to.Stage[ ,"T.onsetToStage3"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==6)), 6) #Replace for stage 3
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==3 & m.Diag[,"HG_state"]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.BC.T.to.Stage[ ,"T.onsetToStage4"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==7)), 7) #Replace for stage 4
   
   # replace with the stage for those who were diagnosed assuming that they don't progress
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "HG_stage_diag"]==2 & m.M[, t+1] != 4, 5) #replace the stage at diagnosis for those who were diagnosed
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "HG_stage_diag"]==3 & m.M[, t+1] != 4, 6) #replace the stage at diagnosis for those who were diagnosed
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "HG_stage_diag"]==4 & m.M[, t+1] != 4, 7) #replace the stage at diagnosis for those who were diagnosed
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==1 & m.Diag[,"HG_state"]==1 & m.M[, t+1] != 5, 3) #replace the stage at diagnosis for those who were diagnosed
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==2 & m.Diag[,"HG_state"]==1 & m.M[, t+1] != 5, 4) #replace the stage at diagnosis for those who were diagnosed
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==3 & m.Diag[,"HG_state"]==1 & m.M[, t+1] != 5, 6) #replace the stage at diagnosis for those who were diagnosed
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==4 & m.Diag[,"HG_state"]==1 & m.M[, t+1] != 5, 7) #replace the stage at diagnosis for those who were diagnosed
   
   return(m.M_8s)
 }
 
+#######################
+# Function for allocating kidney cancer states
+#############################
+f.KC.stages <- function(m.M_8s, m.KC.T.to.Stage, m.M, m.Diag, t){
+  
+  # Update m.M_8s matrix with the states for those who have HG cancer
+  m.M_8s[, t+1] <- m.M[, t+1]
+  m.M_8s[, t+1][which(m.M[, t+1]==2 | m.M[, t+1]==3)] <- 1 #Replace with 1 (NO kidney cancer) for all with bladder cancer
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t] ==8, 8) #Replace with BC death those who died with BC before this cycle
+  
+  # Replace with the relevant stages for those who were not diagnosed but has cancer
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==4 & m.Diag[,"KC_state"]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.KC.T.to.Stage[ ,"T.onsetToStage2"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==2)), 2) #Replace for stage 2
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==4 & m.Diag[,"KC_state"]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.KC.T.to.Stage[ ,"T.onsetToStage3"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==3)), 3) #Replace for stage 3
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==4 & m.Diag[,"KC_state"]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.KC.T.to.Stage[ ,"T.onsetToStage4"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==6)), 6) #Replace for stage 4
+  
+  # replace with the stage for those who were diagnosed assuming that they don't progress
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==1 & m.Diag[,"KC_state"]==1 & m.M[, t+1] != 5, 4) #replace the stage at diagnosis for those who were diagnosed
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==2 & m.Diag[,"KC_state"]==1 & m.M[, t+1] != 5, 2) #replace the stage at diagnosis for those who were diagnosed
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==3 & m.Diag[,"KC_state"]==1 & m.M[, t+1] != 5, 3) #replace the stage at diagnosis for those who were diagnosed
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==4 & m.Diag[,"KC_state"]==1 & m.M[, t+1] != 5, 6) #replace the stage at diagnosis for those who were diagnosed
+  
+  return(m.M_8s)
+}
 ##################################
 # Function updating the matrix m.BC.T.to.Stage with shorter or longer progression based whether the age is below or above 60
 

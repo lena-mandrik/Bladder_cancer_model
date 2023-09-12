@@ -21,9 +21,9 @@ library("doRNG")
 set.seed(10)
 
 ###Set up the Global Parameters
-run_mode <- "Deterministic" # Available modes include "Testing" (returns all matrices), "Deterministic" (m.Out only), "PSA" (m.Out only)
+run_mode <- "PSA" # Available modes include "Testing" (returns all matrices), "Deterministic" (m.Out only), "PSA" (m.Out only)
 cohort <- 1 # 1 = all individuals start model at same age (cohort), 0 = individuals start in model at true (HSE) age
-disease <- "kidney" #"bladder" #"kidney" "bladder_kidney"
+disease <- "bladder_kidney" # The options include "bladder" #"kidney" "bladder_kidney"
 
 if(cohort ==1){
   cohort_age <- 30 #select starting age of cohort (hash out or set to anything if not using cohort)
@@ -46,12 +46,15 @@ N_sets <- if(run_mode =="PSA"){n.loops}else{1} #Number of parameter sets require
 
 
 # Set whether the population needs to be all population, current smokers, or both current and past smokers to be sampled before the model start
-char_pop <- "all.smoke" # c.smoke- current smokers, all.smoke- current and past smokers, all -the whole population
+# Choose the population that is going to be simulated
+char_pop <- "all" # c.smoke- current smokers, all.smoke- current and past smokers, all -the whole population
+# Choose who from the simulated population is goign to receive the intervention
 screen_elig <- "all.smoke" # c.smoke- current smokers, all.smoke- current and past smokers, all -the whole population
 sex <- "all"
 
 ###Load up all the functions and all the data for use in the model
 source("Load_all_files.R")
+
 nsample <- if(cohort==1){n.i} else{5000} #define a sample size for population to run in each loop 
 
 ###Load up all the functions and all the data for use in the model
@@ -81,19 +84,37 @@ p.set <- ifelse(run_mode =="PSA", iter, 1)
 #p.set=1
 
 #Set up the model parameters according to current parameter set
-f.set_parameters(p.set)
+# set first the global parameters
+f.set_gen_parameters(p.set, Param_sets, Param.names)
+  
+# The parameters are saved in the relevant disease environments
+if(disease=="kidney"){
+f.set_parameters(p.set, Param_sets_KC, Param.names_KC, set.envir=e.KC, "_KC")
+} else if(disease=="bladder"){
+  f.set_parameters(p.set, Param_sets_BC, Param.names_BC, set.envir=e.BC, "_BC")
+}else if(disease=="bladder_kidney"){
+  f.set_parameters(p.set, Param_sets_KC, Param.names_KC, set.envir=e.KC, "_KC")
+  f.set_parameters(p.set, Param_sets_BC, Param.names_BC, set.envir=e.BC, "_BC")
+}
 
 # Allocate the time to stage at diagnosis for each person in HSE
-m.BC.T.to.Stage <- f.stage(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.t.StII.StIII, 
-                           Mean.t.StIII.StIV, shape.t.StIII.StIV, nsample)
+
+if(disease=="kidney" | disease=="bladder_kidney"){
+m.KC.T.to.Stage <- f.stage(e.KC, nsample)
+}
+
+if(disease=="bladder" | disease=="bladder_kidney"){
+m.BC.T.to.Stage <- f.stage(e.BC, nsample)
+}
 
 #calculates relative and absolute risks of cancer onset
-#pop <- f.risk.calc(population) 
-pop <- set_population(population) 
+# Assigns the risk of bladder, kidney cancers, or both
+pop <- set_population(population, disease) 
 
-
-pop_ns <- pop_sc_75 <- pop_sc_70 <- 
-  pop_sc_68 <- pop_sc_66 <-pop_sc_64 <- pop_sc_62 <- pop_sc_60 <-pop #copy the population to ensure that individual characteristics remain as in the start
+# copy population matrices
+  pop_ns <- pop_sc_75 <- pop_sc_70 <- 
+  pop_sc_68 <- pop_sc_66 <-pop_sc_64 <- 
+  pop_sc_62 <- pop_sc_60 <-pop #copy the population to ensure that individual characteristics remain as in the start
 
 #Set up random number array for each individual
 m.Rand <- f.generate_random()
@@ -109,27 +130,6 @@ pop <- f.smoke.initial(pop, m.Rand)
 #diag1_accuracy[1,1] <- 0
 #diag2_accuracy[1,1] <- 0
 #Mort.TURBT <-0
-
-P.onset =5.5E-06 
-P.onset_low.risk =0.638
-P.onset_age =1.138
-RR.onset_sex =3.64
-P.sympt.diag_LGBC =0.102
-P.sympt.diag_St1 =0.15
-P.sympt.diag_St2=0.25
-P.sympt.diag_St3=0.33
-P.sympt.diag_St4=0.34
-P.sympt.diag_Age =0.91
-shape.t.StI.StII = 1
-shape.t.StII.StIII =1
-shape.t.StIII.StIV=1
-P.LGtoHGBC=0.00255
-P.ungiag.dead =-0.0051 
-Mean.t.StI.StII=4.9
-Mean.t.StII.StIII=4.2
-Mean.t.StIII.StIV=4
-
-
 
 # Run the model for no screening pop
 DS_screen =0 #Set whether the screening with dipstick happens, 0 - no, 1- yes

@@ -1,5 +1,15 @@
-########################################################
-## Functions to allocate the time to stage at diagnosis for each person in HSE
+
+#################################################################################################################################
+# Create the disease-specific environments to save the future parameters
+#################################################################################################################################
+if(disease == "kidney" | disease == "bladder_kidney"){e.KC <- new.env()}
+if(disease == "bladder" | disease == "bladder_kidney"){e.BC <- new.env()}
+
+
+#################################################################################################################################
+# Weibull sampling forprogression of undiagnosed cancer
+#################################################################################################################################
+## Functions to allocate the time to the next stage for each person in HSE
 #' @details
 #' This function uses the mean and the shape to calculate the scale and sample from the Weibull distribution 
 
@@ -14,20 +24,10 @@ f.Weibull.sample <- function(w_mean, shape.p, nsample){
   
 }
 
-## An alternative function to sample from Gompertz model
 
-f.Gompertz.sample<- function(w_mean, scale.p, nsample) {
-  
-  r.mean <- runif(nsample)
-  r.scale <- runif(nsample)
-  
-  Gompertz <- 1-exp(-scale.p*(exp(r.mean*w_mean)-1))
-  
-  time_to_state <- reliaR::rgompertz(nsample, w_mean, scale.p)
-  
-  return(time_to_state)
-}
-
+#################################################################################################################################
+# Individual sampling of the speed of cancer progression based on Weibull distribution
+#################################################################################################################################
 
 #' @details
 #' This function returns a time from onset to the Stage 2,3, and 4 for each person in the model
@@ -36,9 +36,15 @@ f.Gompertz.sample<- function(w_mean, scale.p, nsample) {
 #' shape.t. - a calibrated shape for each Weibull distribution for each parameter
 #' @return matrix of transition probabilities for each individual
 
-f.stage <- function(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.t.StII.StIII, 
-                    Mean.t.StIII.StIV, shape.t.StIII.StIV, nsample){
+f.stage <- function(.env, nsample){
   
+  
+  Mean.t.StI.StII =.env$Mean.t.StI.StII
+  shape.t.StI.StII=.env$shape.t.StI.StII
+  Mean.t.StII.StIII=.env$Mean.t.StII.StIII
+  shape.t.StII.StIII=.env$shape.t.StII.StIII
+  Mean.t.StIII.StIV=.env$Mean.t.StIII.StIV
+  shape.t.StIII.StIV=.env$shape.t.StIII.StIV
 
   T.onsetToStage2 <- f.Weibull.sample(Mean.t.StI.StII, shape.t.StI.StII, nsample)
   T.Stage3 <- f.Weibull.sample(Mean.t.StII.StIII, shape.t.StII.StIII, nsample)
@@ -56,22 +62,65 @@ f.stage <- function(Mean.t.StI.StII, shape.t.StI.StII, Mean.t.StII.StIII, shape.
   
 }
 
+#################################################################################################################################
+# Cancer survival
+#################################################################################################################################
+#' @details
+#' This function sets the survival for either bladder or kidney cancers 
+#' @params
+#' OC_BC_mort: a txt table with survival data
+#' @return all parameters into the disease specific environment
+#' 
+#' 
 
+f.C.mort <- function(list_of_file_names, set.envir=.GlobalEnv, disease_name){
+  
+  
+  list_of_files <- lapply(list_of_file_names, read.table, sep = "\t", header =T) #Add the files to the list
+  
+  names(list_of_files) <- tools::file_path_sans_ext(basename(list_of_file_names))  # Save the names
+  
+  list2env(list_of_files,envir=set.envir) # Save to the relevant environment 
+  
+  # Proceeding cancer mortality
+  mort1 <- matrix(0, ncol = 1, nrow = 142)
+  mort2 <- matrix(0, ncol = 60, nrow = 142)
+  C1.mort <- cbind(mort1, as.matrix(set.envir$S1), mort2)
+  C2.mort <- cbind(mort1, as.matrix(set.envir$S2), mort2)
+  C3.mort <- cbind(mort1, as.matrix(set.envir$S3), mort2)
+  C4.mort <- cbind(mort1, as.matrix(set.envir$S4), mort2)
+  
+  colnames(C1.mort) <- colnames(C2.mort) <- colnames(C3.mort) <- colnames(C4.mort) <- c(0:70)
+  rownames(C1.mort) <- rownames(C2.mort) <- rownames(C3.mort) <- rownames(C4.mort) <- c(paste("0",c(30:100), sep = ""), paste("1",c(30:100), sep = ""))
+  
+  # Select the objects for the outputs
+  output <- list(C1.mort=C1.mort, C2.mort=C2.mort, C3.mort=C3.mort, C4.mort=C4.mort)
+  
+  for (variable in names(output)) {
+    #new_variable_name <- paste(variable, disease_name, sep = "_")
+    assign(variable, output[[variable]], envir = set.envir)
+      }
+}
+
+
+#################################################################################################################################
+# Setting up disease-specific parameters
+#################################################################################################################################
 #' @details
 #' This function sets parameters 
 #' @params
 #' p.set: Parameter set selected
-#' @return all parameters into the global environment
+#' @return all parameters into the selected environment
 #' 
 #' 
-f.set_parameters <- function(p.set) {
+f.set_parameters <- function(p.set, Param_sets, Param.names, set.envir=.GlobalEnv, disease_name) { #choose "_KC", "_BC"
   
-  for(i in 1:28){ #length(Param.names) for NHD parameters
+  for(i in 1:26){ #length(Param.names) for NHD parameters
     
     vector.Param <- Param_sets[p.set, i]
-    names(vector.Param) <- c(Param.names[i])
-    
-    assign(names(vector.Param), value =vector.Param, envir = .GlobalEnv)
+    #names(vector.Param) <- paste0(c(Param.names[i]), disease_name)
+    names(vector.Param) <- c(Param.names[i])                      
+    assign(names(vector.Param), value =vector.Param, envir =set.envir)
   }
   
   # set parameters for the symptomatic diagnosis
@@ -84,23 +133,6 @@ f.set_parameters <- function(p.set) {
                    Param_sets[p.set, "P.sympt.diag_St4"],
                    0)
   
-  #Set the parameters for Dipstick uptake
-  coef_DT_Uptk <- c(Param_sets[p.set, "DT.UPTK.CONS"],
-                     Param_sets[p.set, "DT.UPTK.50"],
-                     Param_sets[p.set, "DT.UPTK.55"],
-                     Param_sets[p.set, "DT.UPTK.65"],
-                     Param_sets[p.set, "DT.UPTK.70"],
-                     Param_sets[p.set, "DT.UPTK.F"],
-                     Param_sets[p.set, "DT.UPTK.NRESP"],
-                     Param_sets[p.set, "DT.UPTK.INC"],
-                     Param_sets[p.set, "DT.UPTK.IMD2"],
-                     Param_sets[p.set, "DT.UPTK.IMD3"],
-                     Param_sets[p.set, "DT.UPTK.IMD4"],
-                     Param_sets[p.set, "DT.UPTK.IMD5"],
-                     Param_sets[p.set, "DT.UPTK.ASIAN"])
-  
-  #Set the parameters for diagnostic uptake with screen positive
-  Diag.UPTK <- Param_sets[p.set, "Diag.UPTK"]
   
   #Set the parameters for tests sensitivity and False positive (from specificity) in a format of a value by state to use in matrix multiplication
   test_accuracy <- as.matrix(c((1-Param_sets[p.set, "Spec.dipstick"]), #for no cancer
@@ -133,25 +165,15 @@ f.set_parameters <- function(p.set) {
   Mort.TURBT <- Param_sets[p.set, "Mort.TURBT"]
   
   # Set utility age and stage decrements
-  Utility.age <- Param_sets[p.set, "Utility.age"]
   Disutility.HG.St1.3 <- Param_sets[p.set, "Disutility.HG.St1.3"]
   Disutility.HG.St4 <- Param_sets[p.set, "Disutility.HG.St4"]
   Disutility.LG <- Param_sets[p.set, "Disutility.LG"]
   
-  # Set costs of diagnosis and screening
-  Cost.diag.sympt <- Param_sets[p.set, "Cost.diag.sympt"]
-  Cost.diag.screen1 <- Param_sets[p.set, "Cost.diag.screen1"]
-  Cost.diag.screen2 <- Param_sets[p.set, "Cost.diag.screen2"]
-  
-  # Create Cost matrix summarising the cost parameters for each screening process
-  m.Cost.screen <- as.matrix(c(Param_sets[p.set, "Cost.ad.dipstick"],
-                   Param_sets[p.set, "Cost.dipstick.positive"],
-                   Param_sets[p.set, "Cost.dipstick"]), ncol=1)
-  
-  DS_names <-rownames(m.Cost.screen) <- c("Invite_DS","Respond_DS", "Positive_DS")
+ 
   
   # Create matrix summarising the screening process
-  screen_names <- c("Invite_DS","Respond_DS", "Positive_DS","Respond_diag", "Positive_diag", "Respond_Cyst", "Diagnostic_Cyst", "TURBT",
+  screen_names <- c("Invite_DS","Respond_DS", "Positive_DS","Respond_diag", "Positive_diag", "Respond_Cyst", 
+                    "Diagnostic_Cyst", "TURBT",
                     "Next_Surv", 
                     "Die_TURBT", "FP", "FN",
                     "HG", "LG")
@@ -190,22 +212,79 @@ f.set_parameters <- function(p.set) {
   #Add surveillance costs for Y4,5 for HG cancers only
   m.Cost.treat[c("4","5"), c("St1_HG","St2_HG","St3_HG","St4_HG")] <- Param_sets[p.set, "Cost.surv.Y4.5"]
   
-  # Set matrix for screening and diagnostic costs
-  m.scr.diag.costs <- as.matrix(c(Param_sets[p.set, "Cost.diag.sympt"],
-                                Param_sets[p.set, "Cost.diag.screen1"],
-                                Param_sets[p.set, "Cost.diag.screen2"],
-                                Param_sets[p.set, "Cost.dipstick.invite"],
-                                Param_sets[p.set, "Cost.ad.dipstick"],
-                                Param_sets[p.set, "Cost.dipstick.positive"],
-                                Param_sets[p.set, "Cost.dipstick"]))
-                                
+
 
   for (variable in ls()) {
-    assign(variable, get(variable), envir = .GlobalEnv)
+    assign(variable, get(variable), envir = set.envir)
   }
  }
 
 
+#################################################################################################################################
+# Setting up general parameters identical for both diseases
+#################################################################################################################################
+#' @details
+#' This function sets parameters that are identical for bladder and kidney models
+#' @params
+#' p.set: Parameter set selected
+#' @return all parameters into the Global  environment
+#' 
+#' 
+f.set_gen_parameters <- function(p.set, Param_sets, Param.names) { 
+  
+  for(i in 1:4){ #length(Param.names) for NHD parameters
+    
+    vector.Param <- Param_sets[p.set, i]
+    #names(vector.Param) <- paste0(c(Param.names[i]), disease_name)
+    names(vector.Param) <- c(Param.names[i])                      
+    assign(names(vector.Param), value =vector.Param, envir =.GlobalEnv)
+  }
+
+  #Set the parameters for Dipstick uptake
+  coef_DT_Uptk <- c(Param_sets[p.set, "DT.UPTK.CONS"],
+                  Param_sets[p.set, "DT.UPTK.50"],
+                  Param_sets[p.set, "DT.UPTK.55"],
+                  Param_sets[p.set, "DT.UPTK.65"],
+                  Param_sets[p.set, "DT.UPTK.70"],
+                  Param_sets[p.set, "DT.UPTK.F"],
+                  Param_sets[p.set, "DT.UPTK.NRESP"],
+                  Param_sets[p.set, "DT.UPTK.INC"],
+                  Param_sets[p.set, "DT.UPTK.IMD2"],
+                  Param_sets[p.set, "DT.UPTK.IMD3"],
+                  Param_sets[p.set, "DT.UPTK.IMD4"],
+                  Param_sets[p.set, "DT.UPTK.IMD5"],
+                  Param_sets[p.set, "DT.UPTK.ASIAN"])
+
+  #Set the parameters for diagnostic uptake with screen positive
+  Diag.UPTK <- Param_sets[p.set, "Diag.UPTK"]
+
+  Utility.age <- Param_sets[p.set, "Utility.age"]
+
+  # Create Cost matrix summarising the cost parameters for each screening process
+  m.Cost.screen <- as.matrix(c(Param_sets[p.set, "Cost.ad.dipstick"],
+                             Param_sets[p.set, "Cost.dipstick.positive"],
+                             Param_sets[p.set, "Cost.dipstick"]), ncol=1)
+
+  # Set matrix for screening and diagnostic costs
+  m.scr.diag.costs <- as.matrix(c(Param_sets[p.set, "Cost.diag.sympt"],
+                                  Param_sets[p.set, "Cost.diag.screen1"],
+                                  Param_sets[p.set, "Cost.diag.screen2"],
+                                  Param_sets[p.set, "Cost.dipstick.invite"],
+                                  Param_sets[p.set, "Cost.ad.dipstick"],
+                                  Param_sets[p.set, "Cost.dipstick.positive"],
+                                  Param_sets[p.set, "Cost.dipstick"]))
+  
+  DS_names <-rownames(m.Cost.screen) <- c("Invite_DS","Respond_DS", "Positive_DS")
+  
+  for (variable in ls()) {
+    assign(variable, get(variable), envir = .GlobalEnv)
+  }
+
+}
+
+#################################################################################################################################
+# Generating parameter sets
+#################################################################################################################################
 #' @details
 #' This function generates parameter sets for PSA from parameter distributions 
 #' @params
@@ -263,7 +342,9 @@ f.generate_parameters <- function(Params, N_sets){
   
 }
 
-
+#################################################################################################################################
+# Generating random numbers for each individual
+#################################################################################################################################
 
 #' @details
 #' This function sets up an array of random numbers

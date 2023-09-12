@@ -12,76 +12,48 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
   # Effs:    function for the estimation of state specific health outcomes (QALYs) (script "Functions")   
   # create matrices capturing the state name/costs/health outcomes for all individuals at each time point 
   
-  m.M <- m.M_8s <-m.C <- m.E <-  matrix(nrow = nsample, ncol = n.t + 1)
+  model_matrices = initialize_matrices(nsample, n.t, n.s_long, states_long, run_mode)
+  m.M = model_matrices$m.M
+  m.M_8s = model_matrices$m.M_8s
+  m.M_8s_KC =model_matrices$m.M_8s_KC
+  m.C =model_matrices$m.C
+  m.E =model_matrices$m.E
+  m.Diag=model_matrices$m.Diag
+  m.State =model_matrices$m.State
+  m.Screen =model_matrices$m.Screen
+  m.Out=model_matrices$m.Out
   
-  # initial state is 1 if 30-yo cohort is run and actual state saved in pop matrix if HSE population is used
-  if(cohort==1){
-    m.M[, 1] <- m.M_8s[, 1] <- rep(1, nsample)   # indicate the initial health state
-  } else if (cohort==0) {
-    m.M_8s[, 1] <- m.M[, 1] <- pop[ ,"state"] #if the current pop in England is used, assign the first health state as the current state
-    m.M[m.M[, 1]>2 & m.M[, 1] !=4, 1] <- 3 # replace in the short matrix the states for undiagnosed HG cancer as state 3 (all HG BC). The diagnosed HG cancer will be gathered in "DeathOC" state
-    
-    }
-  
-  if(run_mode != "Calibration" ){
-    m.C[, 1] <- 0 # estimate costs per individual for the initial health state 
-    m.E[, 1] <- pop[, "EQ5D"] - (Utility.age * (pop[, "age"] - pop[, "age_0"])) # estimate QALY per individual for the initial health state and starting age
-    m.E[, 1] <- replace(m.E[, 1], m.E[, 1] >1, 1) # if EQ-5D over 1 reset to 1
-    m.E[, 1] <- replace(m.E[, 1], m.E[, 1] <=(-0.594), -0.594) # if EQ-5D under -0.594 reset to -0.594
-    
-  }
- 
-  # create another matrix capturing the current health state for each individual
-  m.State <- matrix(0, nrow = nsample, ncol = n.s_long)
-  colnames(m.State) <- states_long
-  for(n in 1:n.s) {
-    m.State[, n] <- replace(m.State[, n], m.M[, 1] ==n, 1)
-  }
-  
-  #Create another matrix for current diagnostic information
-  m.Diag <- matrix(0, nrow = nsample, ncol = 19)
-  
-  # When BC said, it means HG
-
- colnames(m.Diag) <- c("HG_state", "LG_state", "HG_diag", "LG_diag", "HG_age_diag", "LG_age_diag", "HG_sympt_diag", 
-                       "LG_sympt_diag", "HG_screen_diag", "LG_screen_diag", "FP", 
-   "HG_stage_diag", "yr_diag", "HG_yr_diag", "LG_yr_diag", "HG_yr_onset", "HG_age_onset", "LG_age_onset", "age_BC_death")
-  
- if(run_mode != "Calibration" ){
-  # Create an array to gather screening and surveillance information for each cycle
-  m.Screen <- array(data = 0, dim = c(nsample, n.t + 1, length(screen_names)))
-  dimnames(m.Screen)[[3]] <- screen_names # note that this is defined in set_params
-  
-  #Create a matrix for gathering aggregate outcomes
-  m.Out <- matrix(0, nrow = length(out_names), ncol = n.t + 1)
-  rownames(m.Out) <- out_names
-  colnames(m.Out) <- c(0:n.t)
- }
-  
-  #Create additional matrices for subgroup results
-  #m.Out_M <- m.Out_F <- m.Out_smoke <- m.Out_past.smoke <- m.Out
-  
-  n_round <<- rep(0, nsample) # Set the number of screening rounds each person receives; counts as zero before the cycles
+  # Set the number of screening rounds each person receives; counts as zero before the cycles
+  n_round <<- rep(0, nsample) 
   
   # loop to run the model over time
   for(t in 1:n.t) {
     
     # Natural History
-    TP <- f.calc.indiv.TPs(pop, m.Diag) #calculate new individualised transition probabilities for onset of BC and OC mortality
+    TP <- f.calc.indiv.TPs(pop, m.Diag, disease) #calculate new individualised transition probabilities for onset of BC and OC mortality
     
-    #TP[1:50,3]=1
-    #TP[1:50,c(1,2,4)]=0
+    TP[c(1:5),3]=1
+    TP[c(6:10),5]=1
+    TP[c(1:5),c(1,2,4,5)]=0
+    TP[c(6:10),c(1:4)]=0
+    TP[c(11:15),2]=1
+    TP[c(11:15),c(1,3:5)]=0
     
     m.p <- f.Probs(m.M[, t], TP) #calculate transition probabilities for 4 states at cycle t (excludes TP for those with invasive BC)
     
     m.M[, t+1] <- f.samplev(m.p, m.Rand, t) #Sample the next health state and store it in the Matrix m.M numerically
-    # 1- no cancer, 2- LG cancer, 3 -HG cancer, 4 - mortality
+    # 1- no cancer, 2- LGBC cancer, 3 -HGBC cancer, 4 -KC, 5- mortality
     
-    # update the m.Diag matrix with the LR and HR onset 
+    # update the m.Diag matrix with the LR and HR BC or KC onset 
     m.Diag <- f.onset.Diag(m.Diag, m.M, pop, t) #includes m.Diag[, "HG_age_onset"]
     
-    # Update m.M_8s matrix with the states for those who have HG cancer
-    m.M_8s <- f.HG.stages(m.M_8s, m.BC.T.to.Stage, m.M, m.Diag, t)
+    # Update m.M_8s matrix with the states for those who have HGBC or KC
+    if(disease=="bladder" | disease=="bladder_kidney"){
+      m.M_8s <- f.HG.stages(m.M_8s, m.BC.T.to.Stage, m.M, m.Diag, t)
+    } 
+    if(disease=="kidney" | disease=="bladder_kidney"){
+      m.M_8s_KC <- f.KC.stages(m.M_8s, m.KC.T.to.Stage, m.M, m.Diag, t)
+    }
 
     # Update the matrix with the health state numbers with either 0 or 1 depending if it is equal to the sampled state
     m.State[] <- 0

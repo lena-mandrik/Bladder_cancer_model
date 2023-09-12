@@ -6,38 +6,37 @@
 #' pop: population matrix containing individual level attributes
 #' @return Updated pop matrix with individual risk and probabilities of cancer onset in a specific year
 #'
-#'
+#' The possible env are _KC for kidney cancer and _BC for bladder cancer
 
 
-f.risk.calc <- function(pop) {
+f.risk.calc <- function(pop, set.envir, disease) {
   
   mean.p_smoke <- sum(pop[, "current_smoke"] * pop[, "weighting"])/sum(pop[, "weighting"])
   mean.p_psmoke <- sum(pop[, "past_smoke"] * pop[, "weighting"])/sum(pop[, "weighting"])
   mean.p_occupation <- sum(pop[, "occupation"] * pop[, "weighting"])/sum(pop[, "weighting"])
   mean.p_sex <- sum(pop[, "sex"] * pop[, "weighting"])/sum(pop[, "weighting"])
   
-  #Calculate individual BC risk by multiplying risks for each attribute
-  pop[, "risk"] <- (RR.current_smoke^(pop[, "current_smoke"] - mean.p_smoke))*
-    (RR.past_smoke ^ (pop[, "past_smoke"] - mean.p_psmoke))*
-    (RR.manufacture ^ (pop[, "occupation"] - mean.p_occupation))*(RR.onset_sex^(pop[, "sex"] - mean.p_sex))
+  #extract from the environment
+  RR.current_smoke=set.envir$RR.current_smoke
+  RR.past_smoke=set.envir$RR.past_smoke
+  RR.manufacture=set.envir$RR.manufacture
+  RR.onset_sex=set.envir$RR.onset_sex
+  P.onset=set.envir$P.onset
+  P.onset_age=set.envir$P.onset_age
   
-  # Onset of the bladder cancer at time t by age
-  pop[, "p.BC.i"] <-(P.onset*P.onset_age^(pop[, "age"] -30))*pop[, "risk"]
+  #Calculate individual BC or KC  risk by multiplying risks for each attribute
   
-  #pop[, "p.BC.i"] <-(P.onset*P.onset_age*(pop[, "age"] -30))*pop[, "risk"]
-  
-  #pop[, "p.BC.i"] <- ifelse(pop[, "age"] <= 70,
-   #                         (P.onset * P.onset_age^(pop[, "age"] - 30)) * pop[, "risk"],
-   #                        (P.onset * P.onset_age^(70 - 30)) * pop[, "risk"])
-  
-  #check
-  #no_smoke <- rep(0,nrow(pop))
-  #no_smoke <- replace(no_smoke, pop[, "past_smoke"] !=1 & pop[, "current_smoke"] !=1, 1)
-  #mean(pop[, "current_smoke"]) + mean(pop[, "past_smoke"]) +mean(no_smoke)
-  
-  #for (variable in ls()) {
-  # assign(variable, get(variable), envir = .GlobalEnv)
-  #}
+  if(disease=="kidney"){
+    pop[, "p.KC.i"] <- ((RR.current_smoke^(pop[, "current_smoke"] - mean.p_smoke))*
+                        (RR.past_smoke ^ (pop[, "past_smoke"] - mean.p_psmoke))*
+                        (RR.manufacture ^ (pop[, "occupation"] - mean.p_occupation))*(RR.onset_sex^(pop[, "sex"] - mean.p_sex)))*(P.onset*P.onset_age^(pop[, "age"] -30))
+    
+  } else {
+    pop[, "p.BC.i"] <- ((RR.current_smoke^(pop[, "current_smoke"] - mean.p_smoke))*
+                          (RR.past_smoke ^ (pop[, "past_smoke"] - mean.p_psmoke))*
+                          (RR.manufacture ^ (pop[, "occupation"] - mean.p_occupation))*(RR.onset_sex^(pop[, "sex"] - mean.p_sex)))*(P.onset*P.onset_age^(pop[, "age"] -30))
+    
+  }
   
   pop
   
@@ -87,14 +86,15 @@ f.smoke.initial <- function(pop, m.Rand) {
   return(pop)
   
 }
+
+
 ########################################################
-set_population <- function(population) {
+set_population <- function(population, disease) {
   
   if(cohort ==0){ #if cohort ==0, individuals start in model at true (HSE) age
     
     
 # Re-assign the weights if the population of a specific age range is selected 
-    
     weights_England <- as.matrix(population[ ,"weighting"], ncol=1)
     weights_England[,1] <- replace(weights_England[,1], population[ ,"age_0"]> max_age | population[ ,"age_0"]< min_age, 0)
 
@@ -110,10 +110,15 @@ set_population <- function(population) {
     }
     
     state <- replace(state, state==9, 4) # assign those with the diagnosed cancer as "dead" (ie exclude from costs /benefits calculation)
-    new_population <- cbind(new_population, state) 
+    population <- cbind(new_population, state) 
+    
     # Exclude population with diagnosed cancer by assigning them to the dead state (8)
-    pop <- f.risk.calc(new_population) } else{
-      pop <- f.risk.calc(population)
+    
+    if(disease == "bladder_kidney" | disease == "bladder"){population <-f.risk.calc(population, e.BC, "bladder")}
+    if(disease == "bladder_kidney" | disease == "kidney"){population <-f.risk.calc(population, e.KC, "kidney")}
+     } else{
+       if(disease == "bladder_kidney" | disease == "bladder"){population <-f.risk.calc(population, e.BC, "bladder")}
+       if(disease == "bladder_kidney" | disease == "kidney"){population <-f.risk.calc(population, e.KC, "kidney")}
     }
-  pop
+  population
     }

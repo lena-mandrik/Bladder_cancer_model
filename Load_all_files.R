@@ -2,18 +2,24 @@
 # Read all functions from all scripts within the R folder
 sapply(list.files("R", full.names=T), source)
 
+#################################################################################################################################
 # Load parameter data
-
+#################################################################################################################################
 # For the kidney model, load the kidney parameters
-if(disease=="kidney"){Params <- as.matrix(read.table("Data/kidney/Parameters.txt", header = TRUE, row.names=1))
-  
-  } else{ Params <- as.matrix(read.table("Data/bladder/Parameters.txt", header = TRUE, row.names=1))}
+if(disease=="kidney"| disease == "bladder_kidney"){Params_KC <- as.matrix(read.table("Data/kidney/Parameters.txt", header = TRUE, row.names=1))}
 
-# Load population data 
+if(disease=="bladder"| disease == "bladder_kidney"){ Params_BC <- as.matrix(read.table("Data/bladder/Parameters.txt", header = TRUE, row.names=1))}
+
+# Load general Parameters which are identical for bladder and kidney and will be saved in the Global space
+Params <- as.matrix(read.table("Data/Parameters_general.txt", header = TRUE, row.names=1))
+
+#################################################################################################################################
+# Load population data
+#################################################################################################################################
 # Population from HSE 2018 is the base case population as the last survey that contains the EQ5D values
 population <- as.matrix(read.table("Data/population2018.txt", header = TRUE))
-n.i <- nrow(population)  # number of simulated individuals
 
+n.i <- nrow(population)  # number of simulated individuals
 # Load the states if the model is run as a multi-age cohort
 #states_pop <- as.matrix(read.table("Data\\states_pop.txt", header = TRUE))
 #states_pop <- states_pop[ ,1:9]
@@ -29,7 +35,6 @@ if(char_pop =="c.smoke"){
   population <- population[population[ ,"current_smoke"]==1 | population[ ,"past_smoke"]==1, ][sample(nrow(population[population[ ,"current_smoke"]==1 | population[ ,"past_smoke"]==1, ]), n.i, replace = TRUE), ]
 }
  
-
 # if the population consists of current or men only, replace the population by sampling
 if(sex =="men"){
   
@@ -48,58 +53,62 @@ if(cohort ==1){
   population[, "age"] <- cohort_age
 }
 
+#################################################################################################################################
+# Load Survival
+#################################################################################################################################
+
 #Load probabilities of BC mortality data by age, sex, and stage (as separate files to avoid big matrices)
 #(probability assumed to be 0 after 10 years, and 0 if undiagnosed apart from stage IV)
+# Survival is saved into disease-specific environments
 
-if(disease=="kidney"){
+# For kidney and both diseases, load kidney survival data
+if(disease=="kidney" | disease == "bladder_kidney"){
+  
   list_of_file_names <- list.files(path = "Data/kidney/Survival/", recursive = TRUE,
                                                        pattern = ".txt$", 
-                                                       full.names = TRUE) } else{ # Extract the names of the files 
+                                                       full.names = TRUE) 
+  
+  # Process survival into the necessary format
+  f.C.mort(list_of_file_names, set.envir=e.KC, "_KC")
+  
+} 
+
+# For bladder and both diseases, load bladder survival data
+if(disease=="bladder" | disease == "bladder_kidney"){
+    
   list_of_file_names <- list.files(path = "Data/bladder/Survival/", recursive = TRUE,
                                    pattern = ".txt$", 
                                    full.names = TRUE) # Extract the names of the files
+  
+  # Process survival into the necessary format
+  f.C.mort(list_of_file_names, set.envir=e.BC, "_BC")
 }
 
-
-
-list_of_files <- lapply(list_of_file_names, read.table, sep = "\t", header =T) #Add the files to the list
-
-names(list_of_files) <- tools::file_path_sans_ext(basename(list_of_file_names))  # Save the names
-
-list2env(list_of_files,envir=.GlobalEnv) #Extract the files from the list
-
-
+#################################################################################################################################
 #Load other cause mortality data
+#################################################################################################################################
 
 if(disease=="kidney"){
-OC_mort <- as.matrix(read.table("Data/kidney/OC_mortality.txt"))} else {
-  OC_mort <- as.matrix(read.table("Data/bladder/OC_mortality.txt"))}
-
+OC_mort <- as.matrix(read.table("Data/kidney/OC_mortality.txt"))
+} else if(disease=="bladder"){
+  OC_mort <- as.matrix(read.table("Data/bladder/OC_mortality.txt"))
+}else if(disease=="bladder_kidney"){
+  OC_mort <- as.matrix(read.table("Data/OC_mortality.txt"))
+}
 rownames(OC_mort) <- c(paste("0",c(1:101), sep = ""), paste("1",c(1:101), sep = ""))
-
-# Proceeding cancer mortality
-BC.mort1 <- matrix(0, ncol = 1, nrow = 142)
-BC.mort2 <- matrix(0, ncol = 60, nrow = 142)
-BC.1.mort <- cbind(BC.mort1, as.matrix(S1), BC.mort2)
-BC.2.mort <- cbind(BC.mort1, as.matrix(S2), BC.mort2)
-BC.3.mort <- cbind(BC.mort1, as.matrix(S3), BC.mort2)
-BC.4.mort <- cbind(BC.mort1, as.matrix(S4), BC.mort2)
-
-colnames(BC.1.mort) <- colnames(BC.2.mort) <- colnames(BC.3.mort) <- colnames(BC.4.mort) <- c(0:70)
-rownames(BC.1.mort) <- rownames(BC.2.mort) <- rownames(BC.3.mort) <- rownames(BC.4.mort) <- c(paste("0",c(30:100), sep = ""), paste("1",c(30:100), sep = ""))
-
-
+##################################################################################################################################
 
 #Load correlated parameter sets which are the calibrated parameters
 # Corr_param_sets <- as.matrix(read.table("data/Corr_params.txt", header = TRUE))
 #Add into parameter sets
 # Param_sets[1:N_sets, 1:49] <- Corr_param_sets[1:N_sets, 1:49]
 
-#Specify health states
-states <- c("NoBC", "BC_LG", "BC_HG", "Death")
-states_long <- c("NoBC", "BC_LG","St1_HG",  "DeathOC","St2_HG","St3_HG","St4_HG","DeathBC")
-v.n <- c(1:4)
+#Specify health states based on whether bladder, kidney, or both are modelled 
 
+
+states <- c("NoBC", "BC_LG", "BC_HG", "KC", "Death")
+states_long <- c("NoBC", "BC_LG","St1_HG",  "DeathOC","St2_HG","St3_HG","St4_HG","DeathBC")
+v.n <- c(1:5)
 v.n_long <- c(1:8)
 n.s   <- length(states)  # the number of health states modelled as states
 n.s_long   <- length(states_long)  # the number of all health states 
@@ -122,7 +131,7 @@ v.dwe <- 1 / (1 + d.e) ^ (0:n.t)   # calculate the QALY discount weight based on
 
 
 #Specify outcomes
-out_names <- c("TOTAL_COSTS", "BC_COSTS", "DIAG_COSTS", "SCREEN_COSTS", 
+out_names <- c("TOTAL_COSTS", "Cancer_COSTS", "DIAG_COSTS", "SCREEN_COSTS", 
                "QALYS", "LYS", "LG_SYMPT", "HG_St1_SYMPT", "HG_St2_SYMPT", "HG_St3_SYMPT", "HG_St4_SYMPT", "LG_SCRN", "HG_St1_SCRN", "HG_St2_SCRN", 
                "HG_St3_SCRN", "HG_St4_SCRN",  "HG_St1_MORT", "HG_St2_MORT", "HG_St3_MORT", "HG_St4_MORT", "Die_TURBT", 
                "Invite_DS","Respond_DS", "Positive_DS", "Respond_Cyst", "Diagnostic_Cyst", "TURBT",
@@ -131,5 +140,19 @@ out_names <- c("TOTAL_COSTS", "BC_COSTS", "DIAG_COSTS", "SCREEN_COSTS",
 
 
 #Generate parameter sets for PSA, adjusted for cycle length
+# Generate parameters that are going to be saved in the Global space
 Param_sets <- f.generate_parameters(Params, N_sets)
 Param.names <- colnames(Param_sets)
+
+# Generate disease-specific parameters
+if(disease=="kidney"){
+Param_sets_KC <- f.generate_parameters(Params_KC, N_sets)
+Param.names_KC <- colnames(Param_sets_KC)
+} else if(disease=="bladder"){
+Param_sets_BC <- f.generate_parameters(Params_BC, N_sets)
+Param.names_BC <- colnames(Param_sets_BC)
+}else if(disease=="bladder_kidney"){
+  Param_sets_BC <- f.generate_parameters(Params_BC, N_sets)
+  Param_sets_KC <- f.generate_parameters(Params_KC, N_sets)
+  Param.names_BC <- colnames(Param_sets_BC)
+  Param.names_KC <- colnames(Param_sets_KC)}

@@ -1,3 +1,7 @@
+
+#################################################################################################################################
+# Function assigning people to have recorded symptomatic diagnosis if they have cancer based on probabilities
+#################################################################################################################################
 #' @details
 #' This function updates m.Diag following symptomatic detection of CRC
 #' @params
