@@ -30,12 +30,14 @@ initialize_matrices <- function(nsample, n.t, n.s_long, states_long, run_mode) {
   }
   
   # create another matrix capturing the current health state for each individual
-  m.State <- matrix(0, nrow = nsample, ncol = n.s_long)
+  m.State <- m.State.KC <-matrix(0, nrow = nsample, ncol = n.s_long)
   colnames(m.State) <- states_long
-  for(n in 1:n.s) {
-    m.State[, n] <- replace(m.State[, n], m.M[, 1] ==n, 1)
+  for(n in 1:n.s_long) {
+    m.State[, n] <- replace(m.State[, n], m.M_8s[, 1] ==n, 1)
+    m.State.KC[, n] <- replace(m.State.KC[, n], m.M_8s_KC[, 1] ==n, 1)
+    
   }
-  
+ 
   #Create another matrix for current diagnostic information
   # m.Diag is one as only either BC or KC is assumed in one individual
   m.Diag <- matrix(0, nrow = nsample, ncol = 20)

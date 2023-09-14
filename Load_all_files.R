@@ -103,26 +103,30 @@ rownames(OC_mort) <- c(paste("0",c(1:101), sep = ""), paste("1",c(1:101), sep = 
 #Add into parameter sets
 # Param_sets[1:N_sets, 1:49] <- Corr_param_sets[1:N_sets, 1:49]
 
-#Specify health states based on whether bladder, kidney, or both are modelled 
+#Specify health states based on whether bladder, kidney, or both are modeled 
 
-
+# For bladder cancer
 states <- c("NoBC", "BC_LG", "BC_HG", "KC", "Death")
-states_long <- c("NoBC", "BC_LG","St1_HG",  "DeathOC","St2_HG","St3_HG","St4_HG","DeathBC")
-v.n <- c(1:5)
-v.n_long <- c(1:8)
+states_long <- c("NoBC", "BC_LG","St1_HG", "St2_HG", "DeathOC","St3_HG","St4_HG","DeathBC")
+
 n.s   <- length(states)  # the number of health states modelled as states
 n.s_long   <- length(states_long)  # the number of all health states 
-
+v.n <- 1:n.s
+v.n_long <- 1:n.s_long
 
 # State 1. no disease (ND)
 # State 2. low grade (LG)
 # state 3. high grade (HG) Stage 1 (HG_St1)
-# State 4. Death OC
-# State 5. high grade (HG) Stage 2 (HG_St2)
+# State 4. high grade (HG) Stage 2 (HG_St2)
+# State 5. Death OC
 # State 6. high grade (HG) Stage 3 (HG_St3)
 # State 7. high grade (HG) Stage 4 (HG_St4)
 # State 8. Death from bladder cancer
 
+# For kidney cancer
+states_long.KC <- c("NoKC", "St2","St3","St1","DeathOC","St4","DeathKC")
+n.s_long.KC   <- length(states_long.KC)  # the number of all health states 
+v.n_long.KC <- 1:n.s_long.KC
 
 #Set costs and QALYs discount weights
 v.dwc <- 1 / (1 + d.c) ^ (0:n.t)   # calculate the cost discount weight based on the discount rate d.c    

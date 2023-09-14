@@ -171,12 +171,7 @@ f.set_parameters <- function(p.set, Param_sets, Param.names, set.envir=.GlobalEn
   
  
   
-  # Create matrix summarising the screening process
-  screen_names <- c("Invite_DS","Respond_DS", "Positive_DS","Respond_diag", "Positive_diag", "Respond_Cyst", 
-                    "Diagnostic_Cyst", "TURBT",
-                    "Next_Surv", 
-                    "Die_TURBT", "FP", "FN",
-                    "HG", "LG")
+
 
   # Set treatment and surveillance costs
   # Create Cost matrices 
@@ -275,6 +270,13 @@ f.set_gen_parameters <- function(p.set, Param_sets, Param.names) {
                                   Param_sets[p.set, "Cost.dipstick"]))
   
   DS_names <-rownames(m.Cost.screen) <- c("Invite_DS","Respond_DS", "Positive_DS")
+  
+  # Create matrix summarising the screening process
+  screen_names <- c("Invite_DS","Respond_DS", "Positive_DS","Respond_diag", "Positive_diag", "Respond_Cyst", 
+                    "Diagnostic_Cyst", "TURBT",
+                    "Next_Surv", 
+                    "Die_TURBT", "FP", "FN",
+                    "HG", "LG")
   
   for (variable in ls()) {
     assign(variable, get(variable), envir = .GlobalEnv)

@@ -199,24 +199,36 @@ f.onset.Diag <- function(m.Diag, m.M, pop, t){
 # Function for allocating HG BC states
 ############################
 
-f.HG.stages <- function(m.M_8s, m.BC.T.to.Stage, m.M, m.Diag, t){
+f.C.stages <- function(m.M_8s, m.C.T.to.Stage, m.M, m.Diag, t, anal.disease){
   
   # Update m.M_8s matrix with the states for those who have HG cancer
   m.M_8s[, t+1] <- m.M[, t+1]
-  m.M_8s[, t+1][which(m.M[, t+1]==4)] <- 1 #Replace with 1 (No bladder cancer) for all with kidney cancer
+  
+  if(anal.disease =="bladder"){
+    m.M_8s[, t+1][which(m.M[, t+1]==4)] <- 1 #Replace with 1 (No bladder cancer) for all with kidney cancer
+    c.state= "HG_state"
+    n.state=3
+  } else {
+    m.M_8s[, t+1][which(m.M[, t+1]==2 | m.M[, t+1]==3)] <- 1 #Replace with 1 (NO kidney cancer) for all with bladder cancer
+    c.state= "KC_state"
+    #for kidney cancer move stage 1 to state 3
+    m.M_8s[, t+1][which(m.M[, t+1]==4)] <- 3
+    n.state=4
+  }
+  
   m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t] ==8, 8) #Replace with BC death those who died with BC before this cycle
   
   # Replace with the relevant stages for those who were not diagnosed but has cancer
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==3 & m.Diag[,"HG_state"]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.BC.T.to.Stage[ ,"T.onsetToStage2"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==5)), 4) #Replace for stage 2
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==3 & m.Diag[,"HG_state"]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.BC.T.to.Stage[ ,"T.onsetToStage3"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==6)), 6) #Replace for stage 3
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==3 & m.Diag[,"HG_state"]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.BC.T.to.Stage[ ,"T.onsetToStage4"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==7)), 7) #Replace for stage 4
+  
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==n.state & m.Diag[,c.state]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.C.T.to.Stage[ ,"T.onsetToStage2"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==4)), 4) #Replace for stage 2
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==n.state & m.Diag[,c.state]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.C.T.to.Stage[ ,"T.onsetToStage3"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==6)), 6) #Replace for stage 3
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==n.state & m.Diag[,c.state]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.C.T.to.Stage[ ,"T.onsetToStage4"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==7)), 7) #Replace for stage 4
   
   # replace with the stage for those who were diagnosed assuming that they don't progress
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==1 & m.Diag[,"HG_state"]==1 & m.M[, t+1] != 5, 3) #replace the stage at diagnosis for those who were diagnosed
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==2 & m.Diag[,"HG_state"]==1 & m.M[, t+1] != 5, 4) #replace the stage at diagnosis for those who were diagnosed
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==3 & m.Diag[,"HG_state"]==1 & m.M[, t+1] != 5, 6) #replace the stage at diagnosis for those who were diagnosed
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==4 & m.Diag[,"HG_state"]==1 & m.M[, t+1] != 5, 7) #replace the stage at diagnosis for those who were diagnosed
-  
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==1 & m.Diag[,c.state]==1 & m.M[, t+1] != 5, 3) #replace the stage at diagnosis for those who were diagnosed
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==2 & m.Diag[,c.state]==1 & m.M[, t+1] != 5, 4) #replace the stage at diagnosis for those who were diagnosed
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==3 & m.Diag[,c.state]==1 & m.M[, t+1] != 5, 6) #replace the stage at diagnosis for those who were diagnosed
+
   return(m.M_8s)
 }
 
@@ -231,16 +243,15 @@ f.KC.stages <- function(m.M_8s, m.KC.T.to.Stage, m.M, m.Diag, t){
   m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t] ==8, 8) #Replace with BC death those who died with BC before this cycle
   
   # Replace with the relevant stages for those who were not diagnosed but has cancer
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==4 & m.Diag[,"KC_state"]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.KC.T.to.Stage[ ,"T.onsetToStage2"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==2)), 2) #Replace for stage 2
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==4 & m.Diag[,"KC_state"]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.KC.T.to.Stage[ ,"T.onsetToStage3"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==3)), 3) #Replace for stage 3
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==4 & m.Diag[,"KC_state"]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.KC.T.to.Stage[ ,"T.onsetToStage4"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==6)), 6) #Replace for stage 4
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==4 & m.Diag[,"KC_state"]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.KC.T.to.Stage[ ,"T.onsetToStage2"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==4)), 4) #Replace for stage 2
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==4 & m.Diag[,"KC_state"]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.KC.T.to.Stage[ ,"T.onsetToStage3"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==6)), 6) #Replace for stage 3
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==4 & m.Diag[,"KC_state"]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.KC.T.to.Stage[ ,"T.onsetToStage4"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==7)), 7) #Replace for stage 4
   
   # replace with the stage for those who were diagnosed assuming that they don't progress
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==1 & m.Diag[,"KC_state"]==1 & m.M[, t+1] != 5, 4) #replace the stage at diagnosis for those who were diagnosed
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==2 & m.Diag[,"KC_state"]==1 & m.M[, t+1] != 5, 2) #replace the stage at diagnosis for those who were diagnosed
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==3 & m.Diag[,"KC_state"]==1 & m.M[, t+1] != 5, 3) #replace the stage at diagnosis for those who were diagnosed
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==4 & m.Diag[,"KC_state"]==1 & m.M[, t+1] != 5, 6) #replace the stage at diagnosis for those who were diagnosed
-  
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==1 & m.Diag[,"KC_state"]==1 & m.M[, t+1] != 5, 3) #replace the stage at diagnosis for those who were diagnosed
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==2 & m.Diag[,"KC_state"]==1 & m.M[, t+1] != 5, 4) #replace the stage at diagnosis for those who were diagnosed
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==3 & m.Diag[,"KC_state"]==1 & m.M[, t+1] != 5, 6) #replace the stage at diagnosis for those who were diagnosed
+
   return(m.M_8s)
 }
 ##################################

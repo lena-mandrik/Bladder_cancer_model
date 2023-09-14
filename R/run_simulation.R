@@ -20,6 +20,7 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
   m.E =model_matrices$m.E
   m.Diag=model_matrices$m.Diag
   m.State =model_matrices$m.State
+  m.State.KC =model_matrices$m.State.KC
   m.Screen =model_matrices$m.Screen
   m.Out=model_matrices$m.Out
   
@@ -49,24 +50,35 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
     
     # Update m.M_8s matrix with the states for those who have HGBC or KC
     if(disease=="bladder" | disease=="bladder_kidney"){
-      m.M_8s <- f.HG.stages(m.M_8s, m.BC.T.to.Stage, m.M, m.Diag, t)
+      m.M_8s <- f.C.stages(m.M_8s, m.BC.T.to.Stage, m.M, m.Diag, t, "bladder")
+        
     } 
     if(disease=="kidney" | disease=="bladder_kidney"){
-      m.M_8s_KC <- f.KC.stages(m.M_8s, m.KC.T.to.Stage, m.M, m.Diag, t)
+      m.M_8s_KC <- f.C.stages(m.M_8s_KC, m.KC.T.to.Stage, m.M, m.Diag, t, "kidney")
     }
 
     # Update the matrix with the health state numbers with either 0 or 1 depending if it is equal to the sampled state
-    m.State[] <- 0
+    m.State[] <- m.State.KC[] <- 0
+    
+    if(disease=="bladder" | disease=="bladder_kidney"){
     for(n in 1:n.s_long) {
       m.State[, n] <- replace(m.State[, n], m.M_8s[, t+1] ==n, 1)
     }
+    }
+    
+    if(disease=="kidney" | disease=="bladder_kidney"){
+      for(n in 1:n.s_long.KC) {
+        m.State.KC[, n] <- replace(m.State.KC[, n], m.M_8s_KC[, t+1] ==n, 1)
+      }
+    }
+    
     
     #Symptomatic detection
     if(DS_screen ==1){elig_time <- as.matrix(1*(m.Rand[,"Screen_time", t] <= 0.5), ncol=1)} else {elig_time <- as.matrix(rep(1,nsample), ncol=1)}  # Run symptomatic mode for those with m.Rand < 0.5 (half of the people) to ensure equal impact of screen and sympt pathways
     
     # move year of diagnosis on by one
-    m.Diag[m.M[,t] != 4, "HG_yr_diag"][m.Diag[m.M[,t] != 4, "HG_yr_diag"] >= 1] <- m.Diag[m.M[,t] != 4, "HG_yr_diag"][m.Diag[m.M[,t] != 4, "HG_yr_diag"] >= 1] + 1
-    m.Diag[m.M[,t] != 4, "LG_yr_diag"][m.Diag[m.M[,t] != 4, "LG_yr_diag"] >= 1] <- m.Diag[m.M[,t] != 4, "LG_yr_diag"][m.Diag[m.M[,t] != 4, "LG_yr_diag"] >= 1] + 1
+    m.Diag[m.M[,t] != 5, "yr_diag"][m.Diag[m.M[,t] != 5, "yr_diag"] >= 1] <- m.Diag[m.M[,t] != 5, "yr_diag"][m.Diag[m.M[,t] != 5, "yr_diag"] >= 1] + 1
+    m.Diag[m.M[,t] != 5, "yr_diag"][m.Diag[m.M[,t] != 5, "yr_diag"] >= 1] <- m.Diag[m.M[,t] != 5, "yr_diag"][m.Diag[m.M[,t] != 5, "yr_diag"] >= 1] + 1
     
     m.Diag <- f.symptom(m.Diag, m.State, m.Rand, pop, t, m.M, elig_time, nsample) 
     
