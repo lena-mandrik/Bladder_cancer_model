@@ -30,6 +30,8 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
   # loop to run the model over time
   for(t in 1:n.t) {
     
+    t=1
+    
     # Natural History
     TP <- f.calc.indiv.TPs(pop, m.Diag, disease) #calculate new individualised transition probabilities for onset of BC and OC mortality
     
@@ -60,48 +62,57 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
     # Update the matrix with the health state numbers with either 0 or 1 depending if it is equal to the sampled state
     m.State[] <- m.State.KC[] <- 0
     
-    if(disease=="bladder" | disease=="bladder_kidney"){
     for(n in 1:n.s_long) {
-      m.State[, n] <- replace(m.State[, n], m.M_8s[, t+1] ==n, 1)
-    }
-    }
-    
-    if(disease=="kidney" | disease=="bladder_kidney"){
-      for(n in 1:n.s_long.KC) {
-        m.State.KC[, n] <- replace(m.State.KC[, n], m.M_8s_KC[, t+1] ==n, 1)
-      }
+      if(disease=="bladder" | disease=="bladder_kidney"){m.State[, n] <- replace(m.State[, n], m.M_8s[, t+1] ==n, 1)}
+      if(disease=="kidney" | disease=="bladder_kidney"){m.State.KC[, n] <- replace(m.State.KC[, n], m.M_8s_KC[, t+1] ==n, 1)}
     }
     
-    
-    #Symptomatic detection
+    # Symptomatic detection
+    # If run with screening (annual cycles) consider that 50% of patients become symptomatic the 1st half of the year if they are symptomatic that year
     if(DS_screen ==1){elig_time <- as.matrix(1*(m.Rand[,"Screen_time", t] <= 0.5), ncol=1)} else {elig_time <- as.matrix(rep(1,nsample), ncol=1)}  # Run symptomatic mode for those with m.Rand < 0.5 (half of the people) to ensure equal impact of screen and sympt pathways
     
     # move year of diagnosis on by one
     m.Diag[m.M[,t] != 5, "yr_diag"][m.Diag[m.M[,t] != 5, "yr_diag"] >= 1] <- m.Diag[m.M[,t] != 5, "yr_diag"][m.Diag[m.M[,t] != 5, "yr_diag"] >= 1] + 1
-    m.Diag[m.M[,t] != 5, "yr_diag"][m.Diag[m.M[,t] != 5, "yr_diag"] >= 1] <- m.Diag[m.M[,t] != 5, "yr_diag"][m.Diag[m.M[,t] != 5, "yr_diag"] >= 1] + 1
+    m.Diag[m.M[,t] != 5, "LG_yr_diag"][m.Diag[m.M[,t] != 5, "LG_yr_diag"] >= 1] <- m.Diag[m.M[,t] != 5, "LG_yr_diag"][m.Diag[m.M[,t] != 5, "LG_yr_diag"] >= 1] + 1
     
-    m.Diag <- f.symptom(m.Diag, m.State, m.Rand, pop, t, m.M, elig_time, nsample) 
-    
+    m.Diag <- f.symptom(m.Diag, m.State, m.State.KC, m.Rand, pop, t, m.M, elig_time, nsample) 
   
     # Screening detection
     if(DS_screen ==1){
       
-      scr.Params <- f.calc.screen.Params(pop, m.Screen, m.State, test_accuracy, diag1_accuracy, diag2_accuracy)
-      m.Screen <- f.DS_screen(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, DS_age, DS_round, DS_freq, n_round)
+      scr.Params <- f.calc.screen.params(pop, m.Screen, m.M, t, m.State, m.State.KC, disease) 
+      m.Screen <- f.DS_screen(m.Screen, m.Diag, m.M, m.Rand, pop, t, scr.Params, DS_age, DS_round, DS_freq, n_round, disease)
       
       #re-set the stage at m.M_8s if the patient stage changed at this cycle and progression was to happen in the 2d half of the year
-      m.M_8s <- f.screen.shift(m.M_8s, m.BC.T.to.Stage, m.Screen, m.Diag ,t)
+      if(disease=="bladder" | disease=="bladder_kidney"){m.M_8s <- f.screen.shift(m.M_8s, m.BC.T.to.Stage, m.Screen, m.Diag ,t, "HG")}
+      if(disease=="kidney" | disease=="bladder_kidney"){m.M_8s_KC <- f.screen.shift(m.M_8s_KC, m.KC.T.to.Stage, m.Screen, m.Diag ,t, "KC")}
+      
+      
+      ################################
+      
+      # STOPPED HERE
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
       
       #update again state matrix
       m.State[] <- 0
       for(n in 1:n.s_long) {
-        m.State[, n] <- replace(m.State[, n], m.M_8s[, t+1] ==n, 1)
+        if(disease=="bladder" | disease=="bladder_kidney"){m.State[, n] <- replace(m.State[, n], m.M_8s[, t+1] ==n, 1)}
+        if(disease=="kidney" | disease=="bladder_kidney"){m.State[, n] <- replace(m.State[, n], m.M_8s[, t+1] ==n, 1)}
       }
       
       m.Diag <- f.screen_diag(m.Screen, m.State, m.Diag, pop, t)
       
       # Replace with death for those who died from perforation during TURBT
-      m.M[,t+1][which(m.Screen[ ,t+1 , "Die_TURBT"]==1)] <- 4
+      m.M[,t+1][which(m.Screen[ ,t+1 , "Die_TURBT"]==1)] <- 5
       # NOTE: currently only a progress to HGBC after the surveillance for 3 years is considered for LGBC. HGBC are only following the survival curve.
       # Not sure whether I need to return to no cancer everyone in the end of the 10 year time period
 

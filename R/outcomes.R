@@ -31,7 +31,7 @@ initialize_matrices <- function(nsample, n.t, n.s_long, states_long, run_mode) {
   
   # create another matrix capturing the current health state for each individual
   m.State <- m.State.KC <-matrix(0, nrow = nsample, ncol = n.s_long)
-  colnames(m.State) <- states_long
+  colnames(m.State) <- colnames(m.State.KC) <- states_long
   for(n in 1:n.s_long) {
     m.State[, n] <- replace(m.State[, n], m.M_8s[, 1] ==n, 1)
     m.State.KC[, n] <- replace(m.State.KC[, n], m.M_8s_KC[, 1] ==n, 1)
@@ -75,6 +75,7 @@ initialize_matrices <- function(nsample, n.t, n.s_long, states_long, run_mode) {
     m.E =m.E,
     m.Diag=m.Diag,
     m.State =m.State,
+    m.State.KC=m.State.KC,
     m.Screen =m.Screen,
     m.Out=m.Out
   )

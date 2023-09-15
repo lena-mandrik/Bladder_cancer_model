@@ -20,6 +20,7 @@ Params <- as.matrix(read.table("Data/Parameters_general.txt", header = TRUE, row
 population <- as.matrix(read.table("Data/population2018.txt", header = TRUE))
 
 n.i <- nrow(population)  # number of simulated individuals
+
 # Load the states if the model is run as a multi-age cohort
 #states_pop <- as.matrix(read.table("Data\\states_pop.txt", header = TRUE))
 #states_pop <- states_pop[ ,1:9]
@@ -105,28 +106,31 @@ rownames(OC_mort) <- c(paste("0",c(1:101), sep = ""), paste("1",c(1:101), sep = 
 
 #Specify health states based on whether bladder, kidney, or both are modeled 
 
-# For bladder cancer
+# Defining states in the short (no stages) and long (with cancer stages) matrices
 states <- c("NoBC", "BC_LG", "BC_HG", "KC", "Death")
-states_long <- c("NoBC", "BC_LG","St1_HG", "St2_HG", "DeathOC","St3_HG","St4_HG","DeathBC")
+# State 1. no disease (ND)
+# State 2. low grade (LG) BC
+# state 3. high grade (HG) BC
+# state 4. Kidney cancer
+# State 5. Death 
 
 n.s   <- length(states)  # the number of health states modelled as states
-n.s_long   <- length(states_long)  # the number of all health states 
 v.n <- 1:n.s
+
+
+states_long <- c("NoC", "BC_LG","St1_HG", "St2_HG", "DeathOC","St3_HG","St4_HG","DeathC")
+
+n.s_long   <- length(states_long)  # the number of all health states 
 v.n_long <- 1:n.s_long
 
 # State 1. no disease (ND)
-# State 2. low grade (LG)
+# State 2. low grade (LG) - only for bladder (is 0 in kidney)
 # state 3. high grade (HG) Stage 1 (HG_St1)
 # State 4. high grade (HG) Stage 2 (HG_St2)
 # State 5. Death OC
 # State 6. high grade (HG) Stage 3 (HG_St3)
 # State 7. high grade (HG) Stage 4 (HG_St4)
-# State 8. Death from bladder cancer
-
-# For kidney cancer
-states_long.KC <- c("NoKC", "St2","St3","St1","DeathOC","St4","DeathKC")
-n.s_long.KC   <- length(states_long.KC)  # the number of all health states 
-v.n_long.KC <- 1:n.s_long.KC
+# State 8. Death from bladder or kidney cancers
 
 #Set costs and QALYs discount weights
 v.dwc <- 1 / (1 + d.c) ^ (0:n.t)   # calculate the cost discount weight based on the discount rate d.c    

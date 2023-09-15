@@ -132,8 +132,8 @@ pop <- f.smoke.initial(pop, m.Rand)
 #Mort.TURBT <-0
 
 # Run the model for no screening pop
-DS_screen =0 #Set whether the screening with dipstick happens, 0 - no, 1- yes
-DS_age = 100 #Set the age of the dipstick if screening happens, set to any if no screening
+DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
+DS_age = 50 #Set the age of the dipstick if screening happens, set to any if no screening
 results_no_screen[[iter]] = Simulate_NHD(nsample, n.t, pop_ns, m.BC.T.to.Stage)
 
 # Run the model for screening pop

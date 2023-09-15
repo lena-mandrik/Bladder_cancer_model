@@ -109,7 +109,7 @@ set_population <- function(population, disease) {
       state[i] <- as.numeric(sample(x, size=1, replace = T, prob = p.States[i,]))
     }
     
-    state <- replace(state, state==9, 4) # assign those with the diagnosed cancer as "dead" (ie exclude from costs /benefits calculation)
+    state <- replace(state, state==9, 5) # assign those with the diagnosed cancer as "dead" (ie exclude from costs /benefits calculation)
     population <- cbind(new_population, state) 
     
     # Exclude population with diagnosed cancer by assigning them to the dead state (8)

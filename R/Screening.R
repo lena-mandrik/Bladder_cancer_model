@@ -9,35 +9,66 @@
 #' @return a matrix of individualised screening parameters
 #' 
 
-f.calc.screen.Params <- function(pop, m.Screen, m.State, test_accuracy, diag1_accuracy, diag2_accuracy) {
+f.calc.screen.params <- function(pop, m.Screen, m.M, t, m.State, m.State.KC, disease) {
   
     #Calculates dipstick uptake by personal characteristics
-    DS_uptake <- 1/(1+exp(-((cbind((m.State[, "DeathBC"] ==0 & m.State[, "DeathOC"] ==0), pop[,"age"] <55, 
+    DS_uptake <- 1/(1+exp(-((cbind(m.M[,t] !=5, pop[,"age"] <55, 
                                     pop[,"age"] >=55 & pop[,"age"] <60, pop[,"age"] >=65 & pop[,"age"] <70, pop[,"age"] >=70, 
                                     pop[, "sex"] ==0, (rowSums(m.Screen[, ,"Invite_DS"]) >=1 & rowSums(m.Screen[, ,"Respond_DS"]) ==0),
                                     (rowSums(m.Screen[, ,"Respond_DS"]) >=1), pop[, "imd"] ==2, pop[, "imd"] ==3, pop[, "imd"] ==4, 
                                     pop[, "imd"] ==5, pop[, "ethnic"] ==3) * 1) %*% coef_DT_Uptk)))
     
-    #Calculates DT sensitivity or false positives depending upon underlying health state
-    DS_diag <- (m.State %*% test_accuracy[, "Sens"]) 
+    colnames(DS_uptake) <- "DS_uptake"
     
     #Add diagnostic uptake: considered as 1 in the basecase analysis
     Diag_uptake <- rep(Diag.UPTK, nsample)
     
-    # Probability to be diagnosed in each state at primary care (US + cytology)
-    GP_diag <- (m.State %*% diag1_accuracy[, "Sens"])
+    if(disease =="bladder_kidney"){
+      Diag_kidney =f.diag.params(m.State.KC, .env=e.KC, "KC")
+      Diag_bladder =f.diag.params(m.State, .env=e.BC, "BC")
+      scr.Params <- cbind(DS_uptake, Diag_uptake, Diag_bladder, Diag_kidney)
+    } else if(disease =="bladder"){
+      Diag_bladder =f.diag.params(m.State, .env=e.BC, "BC")
+      scr.Params <- cbind(DS_uptake, Diag_uptake, Diag_bladder)
+    } else{
+      Diag_kidney =f.diag.params(m.State.KC, .env=e.KC, "KC")
+      scr.Params <- cbind(DS_uptake, Diag_uptake, Diag_kidney)
+    }
     
-    # Probability to be diagnosed in each state at haematuria center (Cystoscopy)
-    Cystoscopy_diag <- (m.State %*% diag2_accuracy[, "Sens"])
-    
-    scr.Params <- cbind(DS_uptake, DS_diag, Diag_uptake, GP_diag, Cystoscopy_diag)
-    
-    colnames(scr.Params) <- c("DS_uptake", "DS_diag", "Cyst_uptake", "GP_diag", "Cyst_diag")
-  
-    scr.Params
+    return(scr.Params)
   }
 
+################################################################################################################################
+#' @details
+#' This function calculates individualised screening parameters for each person
+#' USed as an input to f.calc.screen.params 
+#' @params
+#' .env: environment either e.KC (kidney cancer) or e.BC (bladder cancer)
+#' m.State: a matrix giving current health state for all individuals
+#' @return a matrix of individualised screening parameters
+#' 
+f.diag.params <- function(m.State, .env, name.C){
+  
+  #Calculates DT sensitivity or false positives depending upon underlying health state and the modelled disease
+  # for bladder cancer
+  DS_diag <- (m.State %*% .env$test_accuracy[, "Sens"]) 
+  
+  
+  # Probability to be diagnosed in each state at primary care (US + cytology)
+  GP_diag <- (m.State %*% .env$diag1_accuracy[, "Sens"])
+  
+  # Probability to be diagnosed in each state at haematuria center (Cystoscopy)
+  Cystoscopy_diag <- (m.State %*% .env$diag2_accuracy[, "Sens"])
+  
+  scr.Params <- cbind(DS_diag, GP_diag, Cystoscopy_diag)
+  
+  colnames(scr.Params) <- paste0(c("DS_diag", "GP_diag", "Cyst_diag"), "_", name.C)
+  
+  return(scr.Params)
+  
+}
 
+################################################################################################################################
 
 
 #' @details
@@ -55,13 +86,8 @@ f.calc.screen.Params <- function(pop, m.Screen, m.State, test_accuracy, diag1_ac
 #' DS_freq - frequency of the screening rounds
 #' @return an updated screening history array
 #' 
-f.DS_screen <- function(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, DS_age, DS_round, DS_freq, n_round) {
-  
-  # Determine who is eligible for screening
-  #m.Screen[ ,t+1 , "Invite_DS"] <- (m.Diag[, "LG_diag"] ==0 & m.Diag[, "HG_diag"] ==0 & 
-  #  m.State[, "DeathBC"] ==0 & m.State[, "DeathOC"] ==0 &
-  #  pop[, "age"] == DS_age)*1
-  
+f.DS_screen <- function(m.Screen, m.Diag, m.M, m.Rand, pop, t, scr.Params, DS_age, DS_round, DS_freq, n_round, disease) {
+
   # set n_round as the current screening round
   
   # set eligibility by smoking status (considering that smoking status is variable)
@@ -69,19 +95,19 @@ f.DS_screen <- function(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, D
   if(screen_elig == "c.smoke"){
     smoke_eligible[pop[ ,"current_smoke"] !=1, ] <- 0
     }else if(screen_elig == "all.smoke"){
-      smoke_eligible[pop[ ,"current_smoke"] !=1 | pop[ ,"past_smoke"] !=1 , ] <- 0
+      smoke_eligible[pop[ ,"no_smoke"] ==1 , ] <- 0
     }
   
   if(cohort==1){
-    
-    m.Screen[ ,t+1 , "Invite_DS"] <- (m.Diag[, "LG_diag"] ==0 & m.Diag[, "HG_diag"] ==0 & # population not diagnosed with cancer yet
-                                        m.State[, "DeathBC"] ==0 & m.State[, "DeathOC"] ==0 & # alive population
-                                        smoke_eligible[,1]==1 & #the pop status by their current smoking eligibility
+    m.Screen[ ,t+1 , "Invite_DS"] <- (m.Diag[, "LG_diag"] ==0 & m.Diag[, "Diag"] ==0 & # population not diagnosed with cancer yet
+                                        m.M[,t] !=5 & # alive population
+                                        smoke_eligible[,1]==1 & # the pop status by their current smoking eligibility
                                         (pop[, "age"] == DS_age | # for one-time screening, should be equal to the pop age; or the screening start for the repetitive screening
-                                           (pop[, "age"] > DS_age & n_round < DS_round & (DS_freq ==1 | # for annual screening
-                                                                                            (m.Screen[ ,t, "Invite_DS"]==0 & DS_freq ==2)))))*1 # for biennial screening
+                                        (pop[, "age"] > DS_age & n_round < DS_round & (DS_freq ==1 | # for annual screening
+                                        (m.Screen[ ,t, "Invite_DS"]==0 & DS_freq ==2)))))*1 # for biennial screening
   } else if(cohort ==0){
     
+    # Not updated with the ch=ohort ==0
     m.Screen[ ,t+1 , "Invite_DS"] <- (m.Diag[, "LG_diag"] ==0 & m.Diag[, "HG_diag"] ==0 & # population not diagnosed with cancer yet
                                         m.State[, "DeathBC"] ==0 & m.State[, "DeathOC"] ==0 & # alive population
                                         smoke_eligible[,1]==1 & #the pop status by their current smoking eligibility
@@ -92,47 +118,47 @@ f.DS_screen <- function(m.Screen, m.Diag, m.State, m.Rand, pop, t, scr.Params, D
 
   
   # Update the number of screen rounds each person received 
-  n_round[m.Screen[ ,t+1 , "Invite_DS"]==1] <<- n_round[m.Screen[ ,t+1 , "Invite_DS"]==1]+1
+  n_round[m.Screen[ ,t+1 , "Invite_DS"]==1] <- n_round[m.Screen[ ,t+1 , "Invite_DS"]==1]+1
   # Assign n_round outside of the function
 
   # Decide who takes up invite
   m.Screen[ ,t+1 , "Respond_DS"] <- ((m.Rand[ ,"Respond_DS", t] < scr.Params[, "DS_uptake"]) & m.Screen[ ,t+1 , "Invite_DS"])*1
 
   # Decide who gets a positive result (includes true positives and false positives)
-  m.Screen[ ,t+1 , "Positive_DS"] <- ((m.Rand[ ,"Positive_DS", t] < scr.Params[, "DS_diag"]) & m.Screen[ ,t+1 , "Respond_DS"]==1)*1
+  m.Screen[ ,t+1 , "Positive_DS"] <- ((m.Rand[ ,"Positive_DS", t] < scr.Params[, "DS_diag_BC"] | m.Rand[ ,"Positive_DS", t] < scr.Params[, "DS_diag_KC"]) & m.Screen[ ,t+1 , "Respond_DS"]==1)*1
   
   # Decide who takes up invite to the follow-up of DS positive test
   # Set up for now as one uptake for diagnostic similar to cystoscopy 
-  m.Screen[ ,t+1 , "Respond_diag"] <- ((m.Rand[ ,"Respond_diag", t] < scr.Params[, "Cyst_uptake"]) & m.Screen[ ,t+1 , "Positive_DS"]==1)*1
+  m.Screen[ ,t+1 , "Respond_diag"] <- ((m.Rand[ ,"Respond_diag", t] < scr.Params[, "Diag_uptake"]) & m.Screen[ ,t+1 , "Positive_DS"]==1)*1
   
   # Decide who gets a positive result at GP follow up visit (US  + cytology)
-  m.Screen[ ,t+1 , "Positive_diag"] <- ((m.Rand[ ,"Positive_diag", t] < scr.Params[, "GP_diag"]) & m.Screen[ ,t+1 , "Respond_diag"]==1)*1
+  m.Screen[ ,t+1 , "Positive_diag"] <- ((m.Rand[ ,"Positive_diag", t] < scr.Params[, "GP_diag_BC"] | m.Rand[ ,"Positive_diag", t] < scr.Params[, "GP_diag_KC"]) & m.Screen[ ,t+1 , "Respond_diag"]==1)*1
   
   # Decide who takes up Cystoscopy
-  m.Screen[ ,t+1 , "Respond_Cyst"] <- (m.Rand[ ,"Respond_Cyst", t] < scr.Params[, "Cyst_uptake"] & m.Screen[ ,t+1 , "Positive_diag"] ==1)*1
+  m.Screen[ ,t+1 , "Respond_Cyst"] <- (m.Rand[ ,"Respond_Cyst", t] < scr.Params[, "Diag_uptake"] & m.Screen[ ,t+1 , "Positive_diag"] ==1)*1
                                        
-   # Decide who is diagnosed through cystoscopy
-  m.Screen[ ,t+1 , "Diagnostic_Cyst"] <- (m.Rand[ ,"Positive_Cyst", t] < scr.Params[, "Cyst_diag"] & m.Screen[ ,t+1 , "Respond_Cyst"]==1)*1
+  # Decide who is diagnosed through cystoscopy
+  m.Screen[ ,t+1 , "Diagnostic_Cyst"] <- ((m.Rand[ ,"Positive_Cyst", t] < scr.Params[, "Cyst_diag_BC"] | m.Rand[ ,"Positive_Cyst", t] < scr.Params[, "Cyst_diag_KC"]) & m.Screen[ ,t+1 , "Respond_Cyst"]==1)*1
   
-  # Decide who is diagnosed with  LG and HG tumours
-  m.Screen[ ,t+1 , "LG"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & m.State[, "BC_LG"] ==1)*1
-  m.Screen[ ,t+1 , "HG"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & (m.State[, "St1_HG"] ==1 | m.State[, "St2_HG"] ==1 | m.State[, "St3_HG"] ==1 | m.State[, "St4_HG"] ==1))*1
-  
-  #Decide who had TURBT (everyone with detected LG and HG cancer). I guess FP cystoscopy can't lead to TURBT?
-  #m.Screen[ ,t+1 , "TURBT"] <- (m.Screen[ ,t+1 , "LG"]==1  | m.Screen[ ,t+1 , "HG"]==1)*1
+  # Decide who is diagnosed with  LG, HG, KC tumours
+  m.Screen[ ,t+1 , "LG"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & m.M[,t+1]==2)*1
+  m.Screen[ ,t+1 , "HG"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & m.M[,t+1]==3)*1
+  m.Screen[ ,t+1 , "KC"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & m.M[,t+1]==4)*1
   
   #Decide who had TURBT (everyone with detected LG and HG cancer including FP)
-  m.Screen[ ,t+1 , "TURBT"] <- m.Screen[ ,t+1 , "Diagnostic_Cyst"]
+  m.Screen[ ,t+1 , "Surgery"] <- m.Screen[ ,t+1 , "Diagnostic_Cyst"]
+  
+  # Assign a probability to die during surgery based on which disease is modelled
+  if(disease=="bladder" | disease=="bladder_kidney"){Mort.TURBT=e.BC$Mort.TURBT} else{Mort.TURBT=e.KC$Mort.TURBT}
   
   #Decide who died from TURBT
-  m.Screen[ ,t+1 , "Die_TURBT"] <- ((m.Rand[ ,"Die_TURBT", t] < Mort.TURBT) & m.Screen[ ,t+1 , "TURBT"]==1)*1
+  m.Screen[ ,t+1 , "Die_Surgery"] <- ((m.Rand[ ,"Die_Surgery", t] < Mort.TURBT) & m.Screen[ ,t+1 , "Surgery"]==1)*1
     
   #Decide who had FP (everyone without cancer and FP dipstick and cystoscopy)
-  m.Screen[ ,t+1 , "FP"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & m.State[, "NoBC"] ==1)*1
-  #m.Screen[ ,t+1 , "FP"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 &  m.Screen[ ,t+1 , "LG"] !=1 & m.Screen[ ,t+1 , "HG"] !=1)*1
-  
+  m.Screen[ ,t+1 , "FP"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & m.M[,t+1]==1)*1
+
   #Decide who had FN (everyone with cancer who hasn't been diagnosed)
-  m.Screen[ ,t+1 , "FN"] <- (m.Screen[ ,t+1 , "TURBT"]==0 & m.Screen[ ,t+1 , "Respond_DS"] ==1 & (m.State[, "BC_LG"] ==1 |m.State[, "St1_HG"] ==1 | m.State[, "St2_HG"] ==1 | m.State[, "St3_HG"] ==1 | m.State[, "St4_HG"] ==1))*1
+  m.Screen[ ,t+1 , "FN"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==0 & (m.M[,t+1]==2 | m.M[,t+1]==3 | m.M[,t+1]==4))*1
   
   
   
@@ -183,12 +209,20 @@ f.screen_diag <- function(m.Screen, m.State, m.Diag, pop, t) {
 
 #######################################################
 #re-set the stage at m.M_8s if the patient stage changed at this cycle and progression was to happen in the 2d half of the year
-f.screen.shift <- function(m.M_8s, m.BC.T.to.Stage, m.Screen, m.Diag, t){
+f.screen.shift <- function(m.M_8s, m.C.T.to.Stage, m.Screen, m.Diag, t, c.name){
   
   # concervative way of downstaging one step down
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t+1]==5 & ceiling(m.BC.T.to.Stage[ ,"T.onsetToStage2"])==m.Diag[,"HG_yr_onset"] & m.BC.T.to.Stage[ ,"T.onsetToStage2"]%%1 > 0.5 & m.Screen[ ,t+1 , "HG"]==1, 3) #get downstage to one stage (previously sampled stage) if time to progression is less than 6 m
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t+1]==6 & ceiling(m.BC.T.to.Stage[ ,"T.onsetToStage3"])==m.Diag[,"HG_yr_onset"] & m.BC.T.to.Stage[ ,"T.onsetToStage3"]%%1 > 0.5 & m.Screen[ ,t+1 , "HG"]==1, 5) #get downstage (previously sampled stage) if time to progression is less than 6 m
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t+1]==7 & ceiling(m.BC.T.to.Stage[ ,"T.onsetToStage4"])==m.Diag[,"HG_yr_onset"] & m.BC.T.to.Stage[ ,"T.onsetToStage4"]%%1 > 0.5 & m.Screen[ ,t+1 , "HG"]==1, 6) #get downstage (previously sampled stage) if time to progression is less than 6 m
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t+1]==5 & ceiling(m.C.T.to.Stage[ ,"T.onsetToStage2"])==m.Diag[,"yr_onset"] 
+                           & m.C.T.to.Stage[ ,"T.onsetToStage2"]%%1 > 0.5 & m.Screen[ ,t+1 , c.name]==1, 3) 
+  #get downstage to one stage (previously sampled stage) if time to progression is less than 6 m
+  
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t+1]==6 & ceiling(m.C.T.to.Stage[ ,"T.onsetToStage3"])==m.Diag[,"yr_onset"] 
+                           & m.C.T.to.Stage[ ,"T.onsetToStage3"]%%1 > 0.5 & m.Screen[ ,t+1 , c.name]==1, 4) 
+  
+  #get downstage (previously sampled stage) if time to progression is less than 6 m
+  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t+1]==7 & ceiling(m.C.T.to.Stage[ ,"T.onsetToStage4"])==m.Diag[,"yr_onset"] 
+                           & m.C.T.to.Stage[ ,"T.onsetToStage4"]%%1 > 0.5 & m.Screen[ ,t+1 , c.name]==1, 6) 
+  # get downstage (previously sampled stage) if time to progression is less than 6 m
 
  
   return(m.M_8s)

@@ -127,8 +127,8 @@ f.set_parameters <- function(p.set, Param_sets, Param.names, set.envir=.GlobalEn
   Symp_params <- c(0,
                    Param_sets[p.set, "P.sympt.diag_LGBC"],
                    Param_sets[p.set, "P.sympt.diag_St1"],
-                   0,
                    Param_sets[p.set, "P.sympt.diag_St2"],
+                   0,
                    Param_sets[p.set, "P.sympt.diag_St3"],
                    Param_sets[p.set, "P.sympt.diag_St4"],
                    0)
@@ -138,25 +138,28 @@ f.set_parameters <- function(p.set, Param_sets, Param.names, set.envir=.GlobalEn
   test_accuracy <- as.matrix(c((1-Param_sets[p.set, "Spec.dipstick"]), #for no cancer
                      Param_sets[p.set, "Sens.dipstick.LG"], #LG state
                      Param_sets[p.set, "Sens.dipstick.St1"], #stage 1
+                     Param_sets[p.set, "Sens.dipstick.St2.4"], #stage 2
                      0, # Death OC
-                     rep(Param_sets[p.set, "Sens.dipstick.St2.4"],3), #stages 2-4
-                     0), ncol=1) # Death BC
+                     rep(Param_sets[p.set, "Sens.dipstick.St2.4"],2), #stages 3-4
+                     0), ncol=1) # Death cancer
                      
   #Set the parameters for the diagnostic accuracy of US +cytology (assumed to be the same for all HG cancers)               
-  diag1_accuracy <- as.matrix(c((1-Param_sets[p.set, "Spec.joined.diag"]), #for no cancer
-                                Param_sets[p.set, "Sens.joined.diag.LG"], #LG state
-                                Param_sets[p.set, "Sens.joined.diag.HG"], #stage 1
+  diag1_accuracy <- as.matrix(c((1-Param_sets[p.set, "Spec.joined.diag"]), # for no cancer
+                                Param_sets[p.set, "Sens.joined.diag.LG"], # LG state
+                                Param_sets[p.set, "Sens.joined.diag.HG"], # stage 1
+                                Param_sets[p.set, "Sens.joined.diag.HG"], # stage 2
                                 0, # Death OC
-                                rep(Param_sets[p.set, "Sens.joined.diag.HG"],3), #stages 2-4
-                                0), ncol=1) # Death BC
+                                rep(Param_sets[p.set, "Sens.joined.diag.HG"],2), #stages 3-4
+                                0), ncol=1) # Death cancer
   
   #Set the parameters for the diagnostic accuracy of flexible cystoscopy (assumed to be the same for all HG cancers)               
-  diag2_accuracy <- as.matrix(c((1-Param_sets[p.set, "Spec.cystoscopy"]), #for no cancer
-                               Param_sets[p.set, "Sens.cystoscopy.LG"], #LG state
-                               Param_sets[p.set, "Sens.cystoscopy.HG"], #stage 1
-                              0, # Death OC
-                             rep(Param_sets[p.set, "Sens.cystoscopy.HG"],3), #stages 2-4
-                               0), ncol=1) # Death BC  
+  diag2_accuracy <- as.matrix(c((1-Param_sets[p.set, "Spec.cystoscopy"]), # for no cancer
+                               Param_sets[p.set, "Sens.cystoscopy.LG"], # LG state
+                               Param_sets[p.set, "Sens.cystoscopy.HG"], # stage 1
+                               Param_sets[p.set, "Sens.cystoscopy.HG"], # stage 2
+                                0, # Death OC
+                                rep(Param_sets[p.set, "Sens.cystoscopy.HG"],2), #stages 3-4
+                                0), ncol=1) # Death cancer
   
   rownames(test_accuracy)  <- rownames(diag1_accuracy)  <- rownames(diag2_accuracy)  <- states_long
   colnames(test_accuracy) <- colnames(diag1_accuracy) <-colnames(diag2_accuracy) <-"Sens"
@@ -169,10 +172,6 @@ f.set_parameters <- function(p.set, Param_sets, Param.names, set.envir=.GlobalEn
   Disutility.HG.St4 <- Param_sets[p.set, "Disutility.HG.St4"]
   Disutility.LG <- Param_sets[p.set, "Disutility.LG"]
   
- 
-  
-
-
   # Set treatment and surveillance costs
   # Create Cost matrices 
   m.Cost.treat <- matrix(0, nrow =n.t+1, ncol =n.s_long)
@@ -272,11 +271,12 @@ f.set_gen_parameters <- function(p.set, Param_sets, Param.names) {
   DS_names <-rownames(m.Cost.screen) <- c("Invite_DS","Respond_DS", "Positive_DS")
   
   # Create matrix summarising the screening process
-  screen_names <- c("Invite_DS","Respond_DS", "Positive_DS","Respond_diag", "Positive_diag", "Respond_Cyst", 
-                    "Diagnostic_Cyst", "TURBT",
+  screen_names <- c("Invite_DS","Respond_DS", "Positive_DS",
+                    "Respond_diag", "Positive_diag", "Respond_Cyst", 
+                    "Diagnostic_Cyst", "Surgery",
                     "Next_Surv", 
-                    "Die_TURBT", "FP", "FN",
-                    "HG", "LG")
+                    "Die_Surgery", "FP", "FN",
+                    "HG", "LG", "KC")
   
   for (variable in ls()) {
     assign(variable, get(variable), envir = .GlobalEnv)
@@ -353,7 +353,7 @@ f.generate_parameters <- function(Params, N_sets){
 #' @params
 #' @return an array of random numbers for each event, person and time cycle
 f.generate_random <- function() {
-  events <- c("Screen_time", "PROBS", "Smoke_quit", "BCLG_recurrence", "SYMPT_HG", "SYMPT_LG","Death_BC", "Respond_DS", "Positive_DS", 
-              "Respond_diag", "Positive_diag", "Respond_Cyst", "Positive_Cyst", "Die_TURBT", "Death_BC_undiag")
+  events <- c("Screen_time", "PROBS", "Smoke_quit", "BCLG_recurrence", "SYMPT", "Death_C", "Respond_DS", "Positive_DS", 
+              "Respond_diag", "Positive_diag", "Respond_Cyst", "Positive_Cyst", "Die_Surgery", "Death_C_undiag")
   array(runif(nsample * length(events) * n.t), dim = c(nsample, length(events), n.t), dimnames = list(NULL, events, NULL))
 } 
