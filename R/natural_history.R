@@ -53,30 +53,66 @@ f.calc.indiv.TPs <- function(pop, m.Diag, disease){
  #' m.State: matrix containing health states
  #' @return matrix of individualised transition probabilities for each transition
  #' 
-f.calc.BCmort.TP <-function(pop, m.Diag){
+f.calc.Cmort.TP <-function(pop, m.Diag, .env){
   
 # Update the transitions for bladder cancer mortality 
-TP.BC.1.mort <- BC.1.mort[paste(pop[,"sex"],pop[,"age"], sep = ""), ]
-TP.BC.1.mort <- TP.BC.1.mort[cbind(seq_along(m.Diag[, "HG_yr_diag"]+1), (m.Diag[, "HG_yr_diag"]+1))]
+TP.C.1.mort <- .env$C1.mort[paste(pop[,"sex"],pop[,"age"], sep = ""), ]
+TP.C.1.mort <- TP.C.1.mort[cbind(seq_along(m.Diag[, "yr_diag"]+1), (m.Diag[, "yr_diag"]+1))]
 
-TP.BC.2.mort <- BC.2.mort[paste(pop[,"sex"],pop[,"age"], sep = ""), ]
-TP.BC.2.mort <- TP.BC.2.mort[cbind(seq_along(m.Diag[, "HG_yr_diag"]+1), (m.Diag[, "HG_yr_diag"]+1))]
+TP.C.2.mort <- .env$C2.mort[paste(pop[,"sex"],pop[,"age"], sep = ""), ]
+TP.C.2.mort <- TP.C.2.mort[cbind(seq_along(m.Diag[, "yr_diag"]+1), (m.Diag[, "yr_diag"]+1))]
 
-TP.BC.3.mort <- BC.3.mort[paste(pop[,"sex"],pop[,"age"], sep = ""), ]
-TP.BC.3.mort <- TP.BC.3.mort[cbind(seq_along(m.Diag[, "HG_yr_diag"]+1), (m.Diag[, "HG_yr_diag"]+1))]
+TP.C.3.mort <- .env$C3.mort[paste(pop[,"sex"],pop[,"age"], sep = ""), ]
+TP.C.3.mort <- TP.C.3.mort[cbind(seq_along(m.Diag[, "yr_diag"]+1), (m.Diag[, "yr_diag"]+1))]
 
-TP.BC.4.mort <- BC.4.mort[paste(pop[,"sex"],pop[,"age"], sep = ""), ]
-TP.BC.4.mort <- TP.BC.4.mort[cbind(seq_along(m.Diag[, "HG_yr_diag"]+1), (m.Diag[, "HG_yr_diag"]+1))]
+TP.C.4.mort <- .env$C4.mort[paste(pop[,"sex"],pop[,"age"], sep = ""), ]
+TP.C.4.mort <- TP.C.4.mort[cbind(seq_along(m.Diag[, "yr_diag"]+1), (m.Diag[, "yr_diag"]+1))]
 
-TP_mort <- cbind(TP.BC.1.mort, TP.BC.2.mort, TP.BC.3.mort, TP.BC.4.mort)
+TP_mort <- cbind(TP.C.1.mort, TP.C.2.mort, TP.C.3.mort, TP.C.4.mort)
 
 limit.age <- pop[,"age"] >= 100
-TP_mort[limit.age, c("TP.BC.1.mort", "TP.BC.2.mort", "TP.BC.3.mort", "TP.BC.4.mort")] <- 0
+TP_mort[limit.age, c("TP.C.1.mort", "TP.C.2.mort", "TP.C.3.mort", "TP.C.4.mort")] <- 0
 
 TP_mort
 }
 
+##########################################################################################################################
+ #' @details
+ #' This function returns whether each individual died from cancer in a sepcific model cycle. 
+ #' @params
+ #' pop: population matrix containing individual level attributes
+ #' m.Diag: matrix containing diagnosis status for CRC
+ #' .env: environment for the parameters
+ #' m.State: matrix containing health states
+ #' @return matrix of individualised values (0 or 1) for each person
+ #' 
+f.return.C.death <-function(pop, m.Diag, m.State, .env){
+ 
+# Calculate individualised transition probs 
+TP_C.mort <- f.calc.Cmort.TP(pop, m.Diag, .env)
 
+new_C1_death <- 1*((m.Rand[ ,"Death_C", t] < TP_C.mort[,"TP.C.1.mort"]) & m.State[ ,"St1_HG"]>0)
+new_C2_death <- 1*((m.Rand[ ,"Death_C", t] < TP_C.mort[,"TP.C.2.mort"]) & m.State[ ,"St2_HG"]>0)
+new_C3_death <- 1*((m.Rand[ ,"Death_C", t] < TP_C.mort[,"TP.C.3.mort"]) & m.State[ ,"St3_HG"]>0)
+new_C4_death <- 1*((m.Rand[ ,"Death_C", t] < TP_C.mort[,"TP.C.4.mort"]) & m.State[ ,"St4_HG"]>0)
+
+# TP.ungiag.dead - should be betwen -0.001 and -0.05
+# Update the mortality with a possibility for some BC at stage 4 to be undiagnosed death 
+died_undiagnosed <- 1*(m.Rand[ ,"Death_C_undiag", t] < (1-exp(.env$P.ungiag.dead * ((pop[, "age"] - 80) * (1*(pop[, "age"] > 80)))))
+                       & m.Diag[ ,"yr_diag"]==1
+                       & new_C4_death[]==1)
+
+new_C4_death[died_undiagnosed[] ==1] <-0    
+
+C_death_all <- rowSums(cbind(new_C1_death, new_C2_death, new_C3_death, new_C4_death))
+
+outputs <- list(died_undiagnosed=died_undiagnosed,
+                C_death_all =C_death_all)
+
+return(outputs)
+
+}
+##########################################################################################################################
 
  #' @details
  #' This function selects the set of transition probabilities that are relevant for each individual given their current health state (probabilities at time t)

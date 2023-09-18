@@ -87,74 +87,57 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
       if(disease=="bladder" | disease=="bladder_kidney"){m.M_8s <- f.screen.shift(m.M_8s, m.BC.T.to.Stage, m.Screen, m.Diag ,t, "HG")}
       if(disease=="kidney" | disease=="bladder_kidney"){m.M_8s_KC <- f.screen.shift(m.M_8s_KC, m.KC.T.to.Stage, m.Screen, m.Diag ,t, "KC")}
       
-      
-      ################################
-      
-      # STOPPED HERE
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      #update again state matrix
-      m.State[] <- 0
+      # update again state matrix
+      m.State[] <- m.State.KC[] <- 0
       for(n in 1:n.s_long) {
         if(disease=="bladder" | disease=="bladder_kidney"){m.State[, n] <- replace(m.State[, n], m.M_8s[, t+1] ==n, 1)}
-        if(disease=="kidney" | disease=="bladder_kidney"){m.State[, n] <- replace(m.State[, n], m.M_8s[, t+1] ==n, 1)}
+        if(disease=="kidney" | disease=="bladder_kidney"){m.State.KC[, n] <- replace(m.State.KC[, n], m.M_8s_KC[, t+1] ==n, 1)}
       }
-      
-      m.Diag <- f.screen_diag(m.Screen, m.State, m.Diag, pop, t)
+     
+      m.Diag <- f.screen_diag(m.Screen, m.State, m.State.KC, m.Diag, pop, t)
       
       # Replace with death for those who died from perforation during TURBT
-      m.M[,t+1][which(m.Screen[ ,t+1 , "Die_TURBT"]==1)] <- 5
+      m.M[,t+1][which(m.Screen[ ,t+1 , "Die_Surgery"]==1)] <- 5
+      
       # NOTE: currently only a progress to HGBC after the surveillance for 3 years is considered for LGBC. HGBC are only following the survival curve.
       # Not sure whether I need to return to no cancer everyone in the end of the 10 year time period
 
       elig_time <- as.matrix(1*(m.Rand[,"Screen_time", t] > 0.5), ncol=1)
-      m.Diag <- f.symptom(m.Diag, m.State, m.Rand, pop, t, m.M, elig_time, nsample)
+      m.Diag <- f.symptom(m.Diag, m.State, m.State.KC, m.Rand, pop, t, m.M, elig_time, nsample) 
     }
     
     # define BC deaths
-    TP_BC.mort <- f.calc.BCmort.TP(pop, m.Diag)
-    new_BC1_death <- 1*((m.Rand[ ,"Death_BC", t] < TP_BC.mort[,"TP.BC.1.mort"]) & m.State[ ,"St1_HG"]>0)
-    new_BC2_death <- 1*((m.Rand[ ,"Death_BC", t] < TP_BC.mort[,"TP.BC.2.mort"]) & m.State[ ,"St2_HG"]>0)
-    new_BC3_death <- 1*((m.Rand[ ,"Death_BC", t] < TP_BC.mort[,"TP.BC.3.mort"]) & m.State[ ,"St3_HG"]>0)
-    new_BC4_death <- 1*((m.Rand[ ,"Death_BC", t] < TP_BC.mort[,"TP.BC.4.mort"]) & m.State[ ,"St4_HG"]>0)
+    death.BC <- f.return.C.death(pop, m.Diag, m.State, e.BC)
+    died_undiagnosed.BC <- death.BC$died_undiagnosed
+    Death_all.BC <- death.BC$C_death_all
     
-    # TP.ungiag.dead - should be betwen -0.001 and -0.05
-    # Update the mortality with a possibility for some BC at stage 4 to be undiagnosed death 
-    died_undiagnosed <- 1*(m.Rand[ ,"Death_BC_undiag", t] < (1-exp(P.ungiag.dead * ((pop[, "age"] - 80) * (1*(pop[, "age"] > 80)))))
-                           & m.Diag[ ,"yr_diag"]==1
-                           & new_BC4_death[]==1)
-    
-    new_BC4_death[died_undiagnosed[] ==1] <-0    
-    
-    BC_death_all <- rowSums(cbind(new_BC1_death, new_BC2_death, new_BC3_death, new_BC4_death))
+    # define KC deaths
+    death.KC <- f.return.C.death(pop, m.Diag, m.State.KC, e.KC)
+    died_undiagnosed.KC <- death.KC$died_undiagnosed
+    Death_all.KC <- death.KC$C_death_all
     
     # update with the age of BC death
-    m.Diag[, "age_BC_death"] <- m.Diag[, "age_BC_death"] + (pop[, "age"] * BC_death_all) # Record the age of death for those with cancer
-    m.Diag[died_undiagnosed[] ==1, "HG_diag"] <- m.Diag[died_undiagnosed[] ==1, "HG_sympt_diag"] <- 
-      m.Diag[died_undiagnosed[] ==1, "HG_yr_diag"] <-  m.Diag[died_undiagnosed[] ==1, "HG_age_diag"] <-0 # Record the age of death for those with cancer
+    # Record the age of death for those with cancer
+    m.Diag[, "age_C_death"] <- m.Diag[, "age_C_death"] + (pop[, "age"] * Death_all.BC)  + (pop[, "age"] * Death_all.KC) 
+    
+    # If died undiagnosed, clear all characteristics
+    m.Diag[(died_undiagnosed.BC[] ==1 | died_undiagnosed.KC[] ==1), "Diag"] <- m.Diag[(died_undiagnosed.BC[] ==1 | died_undiagnosed.KC[] ==1 ), "Sympt_diag"] <- 
+      m.Diag[died_undiagnosed[] ==1, "yr_diag"] <-  m.Diag[(died_undiagnosed.BC[] ==1 | died_undiagnosed.KC[] ==1), "Age_diag"] <-0 
 
     # Update the mortality for BC (replace with the state 8 in the m.M_8s matrix and state 4 in m.M matrix those who died with BC)
     # In the rare even of the BC perforation during screening, if this patient meant to die from BC during the same cycle it would be counted as BC death
-    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], BC_death_all>0, 8) # If died from BC replace to state 8
-    m.M_8s[, t+1] <- replace(m.M_8s[, t+1], died_undiagnosed>0, 4) # If died undiagnosed replace with 4 (OCM)
-    m.M[, t+1] <- replace(m.M[, t+1], m.M_8s[, t+1]==8 | died_undiagnosed>0, 4)
+    m.M_8s[, t+1] <- ifelse(Death_all.BC > 0, 8, ifelse(died_undiagnosed.BC > 0, 4, m.M_8s[, t+1])) # If died from BC replace to state 8, if died undiagnosed - replace with 4 (OCM)
+    m.M_8s_KC[, t+1] <- ifelse(Death_all.KC > 0, 8, ifelse(died_undiagnosed.KC > 0, 4, m.M_8s_KC[, t+1])) # If died from KC replace to state 8, if died undiagnosed - replace with 4 (OCM)
     
-   #print(which(died_undiagnosed >0))
+    # Update m.M matrix with deaths
+    m.M[, t+1] <- replace(m.M[, t+1], m.M_8s[, t+1]==8 | m.M_8s_KC[, t+1]==8 | died_undiagnosed.BC >0 | died_undiagnosed.KC >0, 4)
     
+    # Update the output matrices
     if(run_mode != "Calibration" ){
     # Update the QALYs and costs (not half cycle corrected)
-    m.E[, t+1] <- f.calc.utility(m.State, m.Diag, pop, t) # Assess effects per individual during the cycle t+1 
-    m.C[, t+1] <- f.calc.cost(m.State, m.Diag, m.Cost.treat) # Assess CRC treatment costs per individual during the cycle t+1 (note not half cycle corrected) 
-    
+    m.E[, t+1] <- f.calc.utility(m.State, m.Diag, pop, t, m.M, disease) # Assess effects per individual during the cycle t+1 
+    m.C[, t+1] <- f.calc.cost(m.State, m.State.KC, m.Diag, disease) # Assess CRC treatment costs per individual during the cycle t+1 (note not half cycle corrected) 
+
     # Gather outcomes for cycle t (total and subgroups)
     m.Out <- f.aggregate.outcomes(m.M_8s, m.Out, m.M, m.E, m.C, m.Diag, m.Screen, m.State, pop, t)
     }

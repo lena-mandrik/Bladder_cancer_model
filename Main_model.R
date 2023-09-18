@@ -133,14 +133,14 @@ pop <- f.smoke.initial(pop, m.Rand)
 
 # Run the model for no screening pop
 DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
-DS_age = 50 #Set the age of the dipstick if screening happens, set to any if no screening
+DS_age = 30 #Set the age of the dipstick if screening happens, set to any if no screening
 results_no_screen[[iter]] = Simulate_NHD(nsample, n.t, pop_ns, m.BC.T.to.Stage)
 
 # Run the model for screening pop
 DS_screen =1 #Set whether the screening with dipstick happens, 0 - no, 1- yes
 DS_age = 75 #Set the age of the dipstick if screening happens, set to zero if no screening
-DS_round = 1 #' DS_round - number of the screening rounds
-DS_freq =0   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
+DS_round = 3 #' DS_round - number of the screening rounds
+DS_freq =1   #' DS_freq - frequency of the screening rounds (either 1 (annual) or 2 (biennial))
 
 
 results_screen_75[[iter]] = Simulate_NHD(nsample, n.t, pop_sc_75, m.BC.T.to.Stage)

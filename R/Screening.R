@@ -155,8 +155,9 @@ f.DS_screen <- function(m.Screen, m.Diag, m.M, m.Rand, pop, t, scr.Params, DS_ag
   m.Screen[ ,t+1 , "Die_Surgery"] <- ((m.Rand[ ,"Die_Surgery", t] < Mort.TURBT) & m.Screen[ ,t+1 , "Surgery"]==1)*1
     
   #Decide who had FP (everyone without cancer and FP dipstick and cystoscopy)
-  m.Screen[ ,t+1 , "FP"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & m.M[,t+1]==1)*1
-
+  m.Screen[ ,t+1 , "FP_BC"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & m.Rand[ ,"Positive_Cyst", t] < scr.Params[, "Cyst_diag_BC"] & m.M[,t+1]==1)*1
+  m.Screen[ ,t+1 , "FP_KC"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & m.Rand[ ,"Positive_Cyst", t] < scr.Params[, "Cyst_diag_KC"] & m.M[,t+1]==1)*1
+  
   #Decide who had FN (everyone with cancer who hasn't been diagnosed)
   m.Screen[ ,t+1 , "FN"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==0 & (m.M[,t+1]==2 | m.M[,t+1]==3 | m.M[,t+1]==4))*1
   
@@ -178,29 +179,33 @@ f.DS_screen <- function(m.Screen, m.Diag, m.M, m.Rand, pop, t, scr.Params, DS_ag
 #' scr.Params: updated screening parameters
 #' @return an updated current diagnostic information matrix
 #' 
-f.screen_diag <- function(m.Screen, m.State, m.Diag, pop, t) {
+f.screen_diag <- function(m.Screen, m.State, m.State.KC, m.Diag, pop, t) {
   
-  #Modify diagnosis columns to include new BC diagnoses from screening and surveillance
-  m.Diag[, "HG_yr_diag"] <- m.Diag[, "HG_yr_diag"] + m.Screen[ ,t+1 , "HG"]
+  #Modify diagnosis columns to include new cancer diagnoses from screening and surveillance
+  yr_diag <- m.Diag[, "yr_diag"] + m.Screen[ ,t+1, "HG"]+ m.Screen[ ,t+1 , "KC"]
   
   # Consider FP as LG, as it is more likely to be LG than HG
-  m.Diag[, "LG_yr_diag"] <- m.Diag[, "LG_yr_diag"] + m.Screen[ ,t+1 , "LG"] + m.Screen[ ,t+1 , "FP"]
-
-  #mark FP in the m.Diag
-  m.Diag[, "FP"] <- m.Diag[, "FP"]+m.Screen[ ,t+1 , "FP"]
+  m.Diag[, "LG_yr_diag"] <- m.Diag[, "LG_yr_diag"] + m.Screen[ ,t+1, "LG"] #+ m.Screen[ ,t+1 , "FP"]
   
-  m.Diag[, "HG_diag"] <- m.Diag[, "HG_diag"] + m.Screen[ ,t+1 , "HG"]
-  m.Diag[, "HG_screen_diag"] <- m.Diag[, "HG_screen_diag"] + m.Screen[ ,t+1 , "HG"]
-  m.Diag[, "HG_age_diag"] <- m.Diag[, "HG_age_diag"] + (pop[, "age"] * m.Screen[ ,t+1 , "HG"])
-  m.Diag[, "HG_stage_diag"] <- m.Diag[, "HG_stage_diag"] + 
-    ((m.State[, "St1_HG"] * 1 + m.State[, "St2_HG"] * 2 + m.State[, "St3_HG"] * 3+ m.State[, "St4_HG"] * 4)* m.Screen[ ,t+1 , "HG"])
+  # Record FP for both kidney and bladder cancers
+  m.Diag[, "FP_BC"] <- m.Diag[, "FP_BC"] + m.Screen[ ,t+1, "FP_BC"]
+  m.Diag[, "FP_KC"] <- m.Diag[, "FP_KC"] + m.Screen[ ,t+1, "FP_KC"]
   
-  m.Diag[, "LG_diag"] <- m.Diag[, "LG_diag"] + m.Screen[ ,t+1 , "LG"] +m.Screen[ ,t+1 , "FP"]
-  m.Diag[, "LG_screen_diag"] <- m.Diag[, "LG_screen_diag"] + m.Screen[ ,t+1 , "LG"]+m.Screen[ ,t+1 , "FP"]
-  m.Diag[, "LG_age_diag"] <- m.Diag[, "LG_age_diag"] + (pop[, "age"] * m.Screen[ ,t+1 , "LG"]) + (pop[, "age"] *m.Screen[ ,t+1 , "FP"])
+  # Record diagnostic parameters fro those diagnosed through screening
+  m.Diag[, "Diag"] <- m.Diag[, "Diag"] + m.Screen[ ,t+1 , "HG"] + m.Screen[ ,t+1 , "KC"]
+  m.Diag[, "Screen_diag"] <- m.Diag[, "Screen_diag"] + m.Screen[ ,t+1 , "HG"] + m.Screen[ ,t+1 , "KC"]
+  m.Diag[, "Age_diag"] <- m.Diag[, "Age_diag"] + (pop[, "age"] * m.Screen[ ,t+1 , "HG"])+ (pop[, "age"] * m.Screen[ ,t+1 , "KC"])
+  
+  m.Diag[, "Stage_diag"] <- m.Diag[, "Stage_diag"] + 
+    ((m.State[, "St1_HG"] * 1 + m.State[, "St2_HG"] * 2 + m.State[, "St3_HG"] * 3+ m.State[, "St4_HG"] * 4)* m.Screen[ ,t+1 , "HG"])+
+  ((m.State.KC[, "St1_HG"] * 1 + m.State.KC[, "St2_HG"] * 2 + m.State.KC[, "St3_HG"] * 3+ m.State.KC[, "St4_HG"] * 4)* m.Screen[ ,t+1 , "KC"])
+  
+  m.Diag[, "LG_diag"] <- m.Diag[, "LG_diag"] + m.Screen[ ,t+1 , "LG"] #+m.Screen[ ,t+1 , "FP_BC"]
+  m.Diag[, "LG_screen_diag"] <- m.Diag[, "LG_screen_diag"] + m.Screen[ ,t+1 , "LG"]#+m.Screen[ ,t+1 , "FP"]
+  m.Diag[, "LG_age_diag"] <- m.Diag[, "LG_age_diag"] + (pop[, "age"] * m.Screen[ ,t+1 , "LG"]) #+ (pop[, "age"] *m.Screen[ ,t+1 , "FP"])
   
   m.Diag[, "yr_diag"] <- m.Diag[, "LG_yr_diag"]
-  m.Diag[, "yr_diag"] <- replace(m.Diag[, "yr_diag"], m.Diag[, "HG_diag"] >0, m.Diag[m.Diag[, "HG_diag"] >0, "HG_yr_diag"])
+  m.Diag[, "yr_diag"] <- replace(m.Diag[, "yr_diag"], yr_diag >0, yr_diag[yr_diag>0])
   
   m.Diag
 }

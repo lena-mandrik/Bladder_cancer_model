@@ -275,7 +275,7 @@ f.set_gen_parameters <- function(p.set, Param_sets, Param.names) {
                     "Respond_diag", "Positive_diag", "Respond_Cyst", 
                     "Diagnostic_Cyst", "Surgery",
                     "Next_Surv", 
-                    "Die_Surgery", "FP", "FN",
+                    "Die_Surgery", "FP_BC", "FP_KC", "FN",
                     "HG", "LG", "KC")
   
   for (variable in ls()) {
