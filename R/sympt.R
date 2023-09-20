@@ -21,6 +21,8 @@ f.symptom <- function(m.Diag, m.State, m.State.KC, m.Rand, pop, t, m.M, elig_tim
   elig_LG <- m.Diag[, "LG_diag"]==0 & m.M[ ,t+1]==2 &  elig_time ==1 # for LG cancer
   elig_KC <- m.Diag[, "Diag"] ==0 & m.M[ ,t+1] ==4 &  elig_time ==1 # for HG cancer
   
+  risk.Sympt.diag.BC <- risk.Sympt.diag.KC <- rep(0, nsample)
+  
   # Probability to become symptomatic patient
   # Returns an annual probability to be diagnosed by time of cancer onset if a person has cancer
   if(disease=="bladder" | disease=="bladder_kidney"){risk.Sympt.diag.BC <- f.risk.Sympt.diag(nsample, Cancer.env=e.BC, m.State)}

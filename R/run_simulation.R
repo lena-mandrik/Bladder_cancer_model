@@ -1,6 +1,6 @@
 ### Function to run the simulation ###
 
-Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) { 
+Simulate_NHD <- function(nsample, n.t, pop, m.Rand) { 
   
   # Arguments:     
   # nsample:     number of individuals simulated; Global parameters, Master script
@@ -30,17 +30,18 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
   # loop to run the model over time
   for(t in 1:n.t) {
     
-    t=1
-    
     # Natural History
     TP <- f.calc.indiv.TPs(pop, m.Diag, disease) #calculate new individualised transition probabilities for onset of BC and OC mortality
     
-    TP[c(1:5),3]=1
-    TP[c(6:10),5]=1
-    TP[c(1:5),c(1,2,4,5)]=0
-    TP[c(6:10),c(1:4)]=0
-    TP[c(11:15),2]=1
-    TP[c(11:15),c(1,3:5)]=0
+    #if(t==1){
+     # TP[c(1:5),3]=1
+      #TP[c(6:15),5]=1
+     # TP[c(1:5),c(1,2,4,5)]=0
+     # TP[c(6:15),c(1:4)]=0
+     # TP[c(16:20),2]=1
+     # TP[c(16:20),c(1,3:5)]=0 
+  #  }
+   
     
     m.p <- f.Probs(m.M[, t], TP) #calculate transition probabilities for 4 states at cycle t (excludes TP for those with invasive BC)
     
@@ -81,6 +82,7 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
     if(DS_screen ==1){
       
       scr.Params <- f.calc.screen.params(pop, m.Screen, m.M, t, m.State, m.State.KC, disease) 
+
       m.Screen <- f.DS_screen(m.Screen, m.Diag, m.M, m.Rand, pop, t, scr.Params, DS_age, DS_round, DS_freq, n_round, disease)
       
       #re-set the stage at m.M_8s if the patient stage changed at this cycle and progression was to happen in the 2d half of the year
@@ -106,15 +108,22 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
       m.Diag <- f.symptom(m.Diag, m.State, m.State.KC, m.Rand, pop, t, m.M, elig_time, nsample) 
     }
     
+    # Define deaths from cancer
+    died_undiagnosed.BC <- Death_all.BC <- died_undiagnosed.KC <- Death_all.KC <- rep(0, nsample)
+      
     # define BC deaths
-    death.BC <- f.return.C.death(pop, m.Diag, m.State, e.BC)
+    if(disease=="bladder" | disease=="bladder_kidney"){
+    death.BC <- f.return.C.death(pop, m.Diag, m.State, e.BC, m.Rand, t)
     died_undiagnosed.BC <- death.BC$died_undiagnosed
     Death_all.BC <- death.BC$C_death_all
+    }
     
+    if(disease=="kidney" | disease=="bladder_kidney"){
     # define KC deaths
-    death.KC <- f.return.C.death(pop, m.Diag, m.State.KC, e.KC)
+    death.KC <- f.return.C.death(pop, m.Diag, m.State.KC, e.KC, m.Rand, t)
     died_undiagnosed.KC <- death.KC$died_undiagnosed
     Death_all.KC <- death.KC$C_death_all
+    }
     
     # update with the age of BC death
     # Record the age of death for those with cancer
@@ -122,28 +131,28 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
     
     # If died undiagnosed, clear all characteristics
     m.Diag[(died_undiagnosed.BC[] ==1 | died_undiagnosed.KC[] ==1), "Diag"] <- m.Diag[(died_undiagnosed.BC[] ==1 | died_undiagnosed.KC[] ==1 ), "Sympt_diag"] <- 
-      m.Diag[died_undiagnosed[] ==1, "yr_diag"] <-  m.Diag[(died_undiagnosed.BC[] ==1 | died_undiagnosed.KC[] ==1), "Age_diag"] <-0 
+      m.Diag[(died_undiagnosed.BC[] ==1 | died_undiagnosed.KC[] ==1), "yr_diag"] <-  m.Diag[(died_undiagnosed.BC[] ==1 | died_undiagnosed.KC[] ==1), "Age_diag"] <-0 
 
     # Update the mortality for BC (replace with the state 8 in the m.M_8s matrix and state 4 in m.M matrix those who died with BC)
     # In the rare even of the BC perforation during screening, if this patient meant to die from BC during the same cycle it would be counted as BC death
-    m.M_8s[, t+1] <- ifelse(Death_all.BC > 0, 8, ifelse(died_undiagnosed.BC > 0, 4, m.M_8s[, t+1])) # If died from BC replace to state 8, if died undiagnosed - replace with 4 (OCM)
-    m.M_8s_KC[, t+1] <- ifelse(Death_all.KC > 0, 8, ifelse(died_undiagnosed.KC > 0, 4, m.M_8s_KC[, t+1])) # If died from KC replace to state 8, if died undiagnosed - replace with 4 (OCM)
+    m.M_8s[, t+1] <- ifelse(died_undiagnosed.BC > 0, 5, ifelse(Death_all.BC > 0, 8, m.M_8s[, t+1])) # If died from BC replace to state 8, if died undiagnosed - replace with 4 (OCM)
+    m.M_8s_KC[, t+1] <- ifelse(died_undiagnosed.KC > 0, 5, ifelse(Death_all.KC > 0, 8, m.M_8s_KC[, t+1])) # If died from KC replace to state 8, if died undiagnosed - replace with 4 (OCM)
     
     # Update m.M matrix with deaths
-    m.M[, t+1] <- replace(m.M[, t+1], m.M_8s[, t+1]==8 | m.M_8s_KC[, t+1]==8 | died_undiagnosed.BC >0 | died_undiagnosed.KC >0, 4)
+    m.M[, t+1] <- replace(m.M[, t+1], m.M_8s[, t+1]==8 | m.M_8s_KC[, t+1]==8 | died_undiagnosed.BC >0 | died_undiagnosed.KC >0, 5)
     
     # Update the output matrices
     if(run_mode != "Calibration" ){
     # Update the QALYs and costs (not half cycle corrected)
-    m.E[, t+1] <- f.calc.utility(m.State, m.Diag, pop, t, m.M, disease) # Assess effects per individual during the cycle t+1 
+    m.E[, t+1] <- f.calc.utility(m.State, m.State.KC, m.Diag, pop, t, m.M, disease) # Assess effects per individual during the cycle t+1 
     m.C[, t+1] <- f.calc.cost(m.State, m.State.KC, m.Diag, disease) # Assess CRC treatment costs per individual during the cycle t+1 (note not half cycle corrected) 
 
     # Gather outcomes for cycle t (total and subgroups)
-    m.Out <- f.aggregate.outcomes(m.M_8s, m.Out, m.M, m.E, m.C, m.Diag, m.Screen, m.State, pop, t)
+    m.Out <- f.aggregate.outcomes(m.M_8s, m.M_8s_KC, m.Out, m.M, m.E, m.C, m.Diag, m.Screen, pop, t, disease)
     }
     
     # Update the age for only those individuals who are alive
-    IND <- m.M[, t+1] != 4
+    IND <- m.M[, t+1] != 5
     pop[IND, "age"] <- pop[IND,"age"] +1 # update the age
     
     ncol_pop <- ncol(pop)
@@ -151,8 +160,14 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
     
     if(!is.null(dim(pop[IND, ]))) {
     pop[IND, ] <- f.smoke.change(pop[IND, ], rand.quit[IND])  # update smoking status
-    pop[IND, ] <- f.risk.calc(pop[IND, ]) #update the risk of BC and p of onset of BC
     
+    if(disease=="bladder_kidney" | disease=="bladder"){
+      pop[IND, ] <- f.risk.calc(pop[IND, ], e.BC, "bladder") #update the risk of BC and p of onset of BC
+    } 
+     if(disease=="bladder_kidney" | disease=="kidney"){
+       pop[IND, ] <- f.risk.calc(pop[IND, ], e.KC, "kidney")
+     }
+     
     }
     
   }#this is a loop for the time point
@@ -160,67 +175,38 @@ Simulate_NHD <- function(nsample, n.t, pop, m.BC.T.to.Stage) {
 
   # Extract the matrices for technical validity
   if(run_mode == "Testing") { # Create a matrix of transitions across states
-    TS_8 <- paste(m.M_8s, cbind(m.M_8s[, -1], NA), sep = "->") # transitions from one state to the other     
-    TS_8 <- matrix(TS_8, nrow = nsample)
-    TS_4 <- paste(m.M, cbind(m.M[, -1], NA), sep = "->") # transitions from one state to the other     
-    TS_4 <- matrix(TS_4, nrow = nsample)
-    rownames(TS_8) <- rownames(TS_4) <-paste("Ind",   1:nsample, sep = " ")   # name the rows      
-    colnames(TS_8) <- colnames(TS_4) <-paste("Cycle", 0:n.t, sep = " ")   # name the columns    
-  
-    TR_8 <- t(apply(m.M_8s, 2, function(x) table(factor(x, levels = v.n_long, ordered = TRUE))))     
-    TR_8 <- TR_8 / nsample    # create a distribution trace
-    TR_4 <- t(apply(m.M, 2, function(x) table(factor(x, levels = v.n, ordered = TRUE))))     
-    TR_4 <- TR_4 / nsample    # create a distribution trace
     
-    rownames(TR_8) <- rownames(TR_4) <-paste("Cycle", 0:n.t, sep = " ")  # name the rows
-    colnames(TR_8) <- v.n_long     # name the columns    
-    colnames(TR_4) <-v.n    # name the columns    
+    testing.outputs <- f.validity.matrix(m.M_8s, m.M_8s_KC, m.M, disease)
     
-  } else {   
-    TS_8 <- TS_4 <- TR_8 <- TR_4 <- NULL   
   } 
   
   # Extract the matrices by sex for calibration
   
   if (run_mode == "Calibration" | run_mode == "Testing") { #  add additional two matrices to report TR matrix by gender
-    names_Diag <- c(colnames(m.Diag), "sex", "age")
-    m.Diag <- cbind(m.Diag, pop[ ,"sex"], pop[ ,"age_0"])
-    colnames(m.Diag) <-names_Diag
+
     
-    a.Temp <- array(data = NA, dim = c(nsample, n.t+1, n.s_long))
-    for (i in 1:n.s_long) {
-      a.Temp[ , ,i] <- (m.M_8s == i)
+    if(disease =="bladder_kidney"){
+      m.sex.validity_BC <- f.validity.sex.matrix(m.M_8s); m.sex.validity_KC <- f.validity.sex.matrix(m.M_8s_KC)
+      m.sex.validity <- list(TR_m.BC=m.sex.validity_BC$TR_m,
+                             TR_f.BC=m.sex.validity_BC$TR_f,
+                             TR_m.KC=m.sex.validity_KC$TR_m,
+                             TR_f.KC=m.sex.validity_KC$TR_f)
+    } else if(disease =="bladder"){
+      m.sex.validity_BC <- f.validity.sex.matrix(m.M_8s)
+      m.sex.validity <- list(TR_m.BC=m.sex.validity_BC$TR_m,
+                             TR_f.BC=m.sex.validity_BC$TR_f)
+    } else{
+      m.sex.validity_KC <- f.validity.sex.matrix(m.M_8s_KC)
+      m.sex.validity <- list(TR_m.KC=m.sex.validity_KC$TR_m,
+                             TR_f.KC=m.sex.validity_KC$TR_f)
     }
-    
-    if(cohort ==1){
-      a.Temp <- a.Temp*pop[,"weighting"]
-    }
-    
-    a.Male <- a.Temp[pop[, "sex"] == 1, ,]
-    if(cohort ==1){
-      TR_m <- as.matrix(colSums(a.Male))/ sum(pop[, "weighting"]*pop[, "sex"])
-    } else {TR_m <- as.matrix(colSums(a.Male))/ sum(pop[, "sex"])}
-    rownames(TR_m) <- paste("Cycle", 0:n.t, sep = " ")  # name the rows
-    colnames(TR_m) <- v.n_long     # name the columns    
-    
-    a.Female <- a.Temp[pop[ ,"sex"] == 0, ,]
-    if(cohort ==1){
-      TR_f <- as.matrix(colSums(a.Female))/ sum(pop[, "weighting"]*(1-pop[, "sex"]))
-    } else {TR_f <- as.matrix(colSums(a.Female))/ sum((1-pop[, "sex"]))}
-    rownames(TR_f) <- paste("Cycle", 0:n.t, sep = " ")  # name the rows
-    colnames(TR_f) <- v.n_long     # name the columns 
-    
-  }
+
+ }
   
-  if(run_mode == "Testing") {
-    cycle <- pop[ ,"age_0"] -30
-    m.M_8s <- cbind(pop[, "PID"],pop[, "age_0"], cycle, m.M_8s)
-    
-  }
   
   results <- switch(run_mode, 
-                    Testing = list(TR_8 = TR_8, TR_4 = TR_4,TR_f = TR_f, TR_m=TR_m, m.Diag = m.Diag, m.M_8s=m.M_8s, m.M= m.M),
-                    Calibration = list(TR_f = TR_f, TR_m=TR_m, m.Diag = m.Diag),
+                    Testing = list(testing.outputs=testing.outputs, m.sex.validity=m.sex.validity, m.Diag = m.Diag, m.M_8s=m.M_8s, m.M= m.M),
+                    Calibration = list(m.sex.validity=m.sex.validity, m.Diag = m.Diag),
                     Deterministic = m.Out,
                     PSA= m.Out
                     )

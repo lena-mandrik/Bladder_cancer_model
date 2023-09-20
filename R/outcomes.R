@@ -102,11 +102,14 @@ f.calc.cost <- function(m.State, m.State.KC, m.Diag, disease){
   
   #Treatment costs in people diagnosed with cancer (up to 5 years after diagnosis) 
   if (disease == "bladder_kidney") {
+    
   m.cost <- (m.State * e.BC$m.Cost.treat[paste(m.Diag[, "yr_diag"]), ]) +  (m.State.KC * e.KC$m.Cost.treat[paste(m.Diag[, "yr_diag"]), ])
+  +  (m.Diag[ ,"FP_BC"] * e.BC$m.Cost.treat[paste(m.Diag[, "yr_diag"]), "BC_LG"])  # Add costs for False positive
+  +  (m.Diag[ ,"FP_KC"] * e.KC$m.Cost.treat[paste(m.Diag[, "yr_diag"]), "St1_HG"]) # Add costs for False positive
   } else if (disease == "bladder") {
-  m.cost <- m.State * e.BC$m.Cost.treat[paste(m.Diag[, "yr_diag"]), ]
+  m.cost <- m.State * e.BC$m.Cost.treat[paste(m.Diag[, "yr_diag"]), ]  +  (m.Diag[ ,"FP_BC"] * e.BC$m.Cost.treat[paste(m.Diag[, "yr_diag"]), "BC_LG"])  # Add costs for False positive
   } else {
-  m.cost <- m.State.KC * e.KC$m.Cost.treat[paste(m.Diag[, "yr_diag"]), ]
+  m.cost <- m.State.KC * e.KC$m.Cost.treat[paste(m.Diag[, "yr_diag"]), ] +  (m.Diag[ ,"FP_KC"] * e.KC$m.Cost.treat[paste(m.Diag[, "yr_diag"]), "St1_HG"])
   }
     
   #Add costs of diagnosis to symptomatically diagnosed only (screen diagnosed are added on a later stage in aggregated outcomes)
@@ -134,13 +137,13 @@ f.calc.cost <- function(m.State, m.State.KC, m.Diag, disease){
 #' pop: a population matrix of individuals, each with a current age
 #' t: cycle
 #' @return a vector of utilities for each person
-f.calc.utility <- function(m.State, m.Diag, pop, t, m.M, disease) {    
+f.calc.utility <- function(m.State, m.State.KC, m.Diag, pop, t, m.M, disease) {    
   
   #First calculate age decrement
   v.utility <- pop[, "EQ5D"] - (Utility.age * (pop[, "age"] - pop[, "age_0"]))
   
   # Mark those individuals with the diagnosed disease
-  LG_u <- (m.Diag[, "LG_yr_diag"] >0 & m.Diag[, "LG_yr_diag"] <=3 & m.State[,"BC_LG"] ==1)*1 # Impact on utilities for LG cancers is during 3 years
+  LG_u <- (m.Diag[, "LG_yr_diag"] >0 & m.Diag[, "LG_yr_diag"] <=3 & (m.State[,"BC_LG"] ==1| m.Diag[, "FP_BC"]==1))*1 # Impact on utilities for LG cancers is during 3 years
   
   HG_1.3_u <- ((m.Diag[, "yr_diag"] >0 & m.Diag[, "yr_diag"] <=5) & 
                  (m.State[,"St1_HG"] ==1 |m.State[,"St2_HG"] ==1 | m.State[,"St3_HG"] ==1))*1 # Impact on utilities for HG cancers is during 5 years
@@ -148,7 +151,7 @@ f.calc.utility <- function(m.State, m.Diag, pop, t, m.M, disease) {
   HG_4_u <- (m.Diag[, "yr_diag"] >0 & m.Diag[, "yr_diag"] <=5 & m.State[,"St4_HG"] ==1)*1 # Impact on utilities for HG cancers is during 5 years
   
   KC_1.3_u <- ((m.Diag[, "yr_diag"] >0 & m.Diag[, "yr_diag"] <=5) & 
-              (m.State.KC[,"St1_HG"] ==1 |m.State.KC[,"St2_HG"] ==1 | m.State.KC[,"St3_HG"] ==1))*1 # Impact on utilities for HG cancers is during 5 years
+              ((m.State.KC[,"St1_HG"] ==1 |m.State.KC[,"St2_HG"] ==1 | m.State.KC[,"St3_HG"] ==1) |m.Diag[, "FP_KC"]==1))*1 # Impact on utilities for HG cancers is during 5 years
   KC_4_u <- (m.Diag[, "yr_diag"] >0 & m.Diag[, "yr_diag"] <=5 & m.State.KC[,"St4_HG"] ==1)*1 # Impact on utilities for HG cancers is during 5 years
   
   # Assign disutility for each diagnosed state by using the multipliers
@@ -160,9 +163,20 @@ f.calc.utility <- function(m.State, m.Diag, pop, t, m.M, disease) {
     disutility_C <- KC_1.3_u * e.KC$Disutility.HG.St1.3 + KC_4_u * e.KC$Disutility.HG.St4
   }
   
-  #Multiply to disutility from the individual EQ5D in people with EQ5D >= -0.594. Assume the utilities in people with lower utilities remain so
-  v.utility <- ifelse(v.utility >= -0.594, v.utility * disutility_C, -0.594)
-
+  # for those who don't have cancer (multipliers ==0) replace 0 with 1
+  disutility_C <- replace(disutility_C, disutility_C ==0, 1)
+  
+  
+  #Multiply individual EQ5D by utility multiplier to get new HRQoL in people with EQ5D >=0
+  v.utility[v.utility>=0] <- (v.utility*disutility_C)[v.utility>=0]
+    
+  
+  #Divide individual EQ5D by utility multiplier to get new HRQoL in people with EQ5D <0
+  v.utility[v.utility <0] <- (v.utility / disutility_C)[v.utility <0]
+  
+  #Replace any individual EQ5D score below minimum value, with minimum (-0.594)
+  v.utility <- replace(v.utility, v.utility < -0.594, -0.594)
+  
   #Replace any individual EQ5D score above maximum value, with maximum (1)
   v.utility <- replace(v.utility, v.utility > 1, 1)
   
@@ -187,7 +201,7 @@ f.calc.utility <- function(m.State, m.Diag, pop, t, m.M, disease) {
 #' t: cycle number
 #' @return a matrix of aggregated, weighted outcomes for time t
 
-f.aggregate.outcomes <- function(m.M_8s, m.Out, m.M, m.E, m.C, m.Diag, m.Screen, m.State, pop, t, disease) {
+f.aggregate.outcomes <- function(m.M_8s, m.M_8s_KC, m.Out, m.M, m.E, m.C, m.Diag, m.Screen, pop, t, disease) {
   
   ###Fill outcomes matrix
   
@@ -230,7 +244,6 @@ f.aggregate.outcomes <- function(m.M_8s, m.Out, m.M, m.E, m.C, m.Diag, m.Screen,
     m.Out["HG_St4_MORT", t+1] <- sum((m.M_8s[, t+1] ==8 & m.M_8s[, t] <8 & m.Diag[, "Stage_diag"] ==4) * pop[, "weighting"])
     
     #weighted counts of harms. Add mortality because of TURBT
-    m.Out["Die_TURBT", t+1] <- sum((m.Screen[, t+1, "Die_TURBT"]) * pop[, "weighting"])
     m.Out["FP_BC", t+1] <- sum(m.Screen[, t+1, "FP_BC"] * pop[, "weighting"]) # total number of CTCs used
     m.Out["FN_BC", t+1] <- sum(m.Screen[, t+1, "FN_BC"] * pop[, "weighting"]) # total number of CTCs used
     
@@ -250,17 +263,18 @@ f.aggregate.outcomes <- function(m.M_8s, m.Out, m.M, m.E, m.C, m.Diag, m.Screen,
     m.Out["KC_St3_SCRN", t+1] <- sum((m.Diag[ ,"KC_state"]==1 & m.Diag[ ,"yr_diag"]==1 & m.Diag[, "Screen_diag"] ==1 & m.Diag[, "Stage_diag"] ==3) * pop[, "weighting"]) 
     m.Out["KC_St4_SCRN", t+1] <- sum((m.Diag[ ,"KC_state"]==1 & m.Diag[ ,"yr_diag"]==1 & m.Diag[, "Screen_diag"] ==1 & m.Diag[, "Stage_diag"] ==4) * pop[, "weighting"]) 
     
-    m.Out["KC_St1_MORT", t+1] <- sum((m.M_8s[, t+1] ==8 & m.M_8s[, t] <8 & m.Diag[, "Stage_diag"] ==1) * pop[, "weighting"]) 
-    m.Out["KC_St2_MORT", t+1] <- sum((m.M_8s[, t+1] ==8 & m.M_8s[, t] <8 & m.Diag[, "Stage_diag"] ==2) * pop[, "weighting"]) 
-    m.Out["KC_St3_MORT", t+1] <- sum((m.M_8s[, t+1] ==8 & m.M_8s[, t] <8 & m.Diag[, "Stage_diag"] ==3) * pop[, "weighting"]) 
-    m.Out["KC_St4_MORT", t+1] <- sum((m.M_8s[, t+1] ==8 & m.M_8s[, t] <8 & m.Diag[, "Stage_diag"] ==4) * pop[, "weighting"])
+    m.Out["KC_St1_MORT", t+1] <- sum((m.M_8s_KC[, t+1] ==8 & m.M_8s_KC[, t] <8 & m.Diag[, "Stage_diag"] ==1) * pop[, "weighting"]) 
+    m.Out["KC_St2_MORT", t+1] <- sum((m.M_8s_KC[, t+1] ==8 & m.M_8s_KC[, t] <8 & m.Diag[, "Stage_diag"] ==2) * pop[, "weighting"]) 
+    m.Out["KC_St3_MORT", t+1] <- sum((m.M_8s_KC[, t+1] ==8 & m.M_8s_KC[, t] <8 & m.Diag[, "Stage_diag"] ==3) * pop[, "weighting"]) 
+    m.Out["KC_St4_MORT", t+1] <- sum((m.M_8s_KC[, t+1] ==8 & m.M_8s_KC[, t] <8 & m.Diag[, "Stage_diag"] ==4) * pop[, "weighting"])
     
     #weighted counts of harms. Add mortality because of TURBT
-    m.Out["Die_KC_SUR", t+1] <- sum((m.Screen[, t+1, "Die_KC_SUR"]) * pop[, "weighting"])
     m.Out["FP_KC", t+1] <- sum(m.Screen[, t+1, "FP_KC"] * pop[, "weighting"]) # total number of CTCs used
     m.Out["FN_KC", t+1] <- sum(m.Screen[, t+1, "FN_KC"] * pop[, "weighting"]) # total number of CTCs used
     
   }
+  
+  m.Out["Die_Surgery", t+1] <- sum((m.Screen[, t+1, "Die_Surgery"]) * pop[, "weighting"])
   
   #weighted resource use
   m.Out["Invite_DS", t+1] <- sum(m.Screen[, t+1, "Invite_DS"] * pop[, "weighting"]) # total number of dipstick kits sent
@@ -274,10 +288,93 @@ f.aggregate.outcomes <- function(m.M_8s, m.Out, m.M, m.E, m.C, m.Diag, m.Screen,
   m.Out[, t+1] <- m.Out[, t+1] / sum(pop[, "weighting"])
   
   #Apply discounting to costs, QALYs and Life Years
-  costs <- c("TOTAL_COSTS", "BC_COSTS", "SCREEN_COSTS")
+  costs <- c("TOTAL_COSTS", "Cancer_COSTS", "SCREEN_COSTS")
   m.Out[costs, t+1] <- m.Out[costs, t+1] * c(rep(v.dwc[t+1], length(costs)))
   m.Out["QALYS", t+1] <- m.Out["QALYS", t+1] * v.dwe[t+1]
   m.Out["LYS", t+1] <- m.Out["LYS", t+1] * v.dwe[t+1]
   
   m.Out
 }
+
+
+################################################
+f.validity.matrix <- function(m.M_8s, m.M_8s_KC, m.M, disease){
+  
+  # Matrices that has both bladder and kidney cancers
+  TS_4 <- paste(m.M, cbind(m.M[, -1], NA), sep = "->") # transitions from one state to the other     
+  TS_4 <- matrix(TS_4, nrow = nsample)
+  TR_4 <- t(apply(m.M, 2, function(x) table(factor(x, levels = v.n, ordered = TRUE))))     
+  TR_4 <- TR_4 / nsample    # create a distribution trace
+  rownames(TS_4) <-paste("Ind",   1:nsample, sep = " ")   # name the rows
+  colnames(TS_4) <-paste("Cycle", 0:n.t, sep = " ")
+  rownames(TR_4) <-paste("Cycle", 0:n.t, sep = " ")  # name the rows
+  colnames(TR_4) <-v.n    # name the columns  
+  
+  # wide 8-state matrices for bladder cancer
+  if(disease =="bladder_kidney" | disease =="bladder"){
+    TS_8 <- paste(m.M_8s, cbind(m.M_8s[, -1], NA), sep = "->") # transitions from one state to the other     
+    TS_8 <- matrix(TS_8, nrow = nsample)
+    rownames(TS_8) <- paste("Ind",   1:nsample, sep = " ")   # name the rows      
+    colnames(TS_8) <- paste("Cycle", 0:n.t, sep = " ")   # name the columns    
+    
+    TR_8 <- t(apply(m.M_8s, 2, function(x) table(factor(x, levels = v.n_long, ordered = TRUE))))     
+    TR_8 <- TR_8 / nsample    # create a distribution trace
+    rownames(TR_8) <- paste("Cycle", 0:n.t, sep = " ")  # name the rows
+    colnames(TR_8) <- v.n_long     # name the columns  
+    
+  }
+  
+  # wide 8-state matrices for kidney cancer
+  if(disease =="bladder_kidney" | disease =="kidney"){
+    TS_8_KC <- paste(m.M_8s, cbind(m.M_8s[, -1], NA), sep = "->") # transitions from one state to the other     
+    TS_8_KC <- matrix(TS_8_KC, nrow = nsample)
+    rownames(TS_8_KC) <- paste("Ind",   1:nsample, sep = " ")   # name the rows      
+    colnames(TS_8_KC) <- paste("Cycle", 0:n.t, sep = " ")   # name the columns    
+    
+    TR_8_KC <- t(apply(m.M_8s, 2, function(x) table(factor(x, levels = v.n_long, ordered = TRUE))))     
+    TR_8_KC <- TR_8_KC / nsample    # create a distribution trace
+    rownames(TR_8_KC) <- paste("Cycle", 0:n.t, sep = " ")  # name the rows
+    colnames(TR_8_KC) <- v.n_long     # name the columns    
+  }
+  
+  output <- ifelse(disease =="bladder_kidney", list(TS_4=TS_4, TR_4=TR_4, TS_8=TS_8,TR_8=TR_8, TS_8_KC=TS_8_KC, TR_8_KC =TR_8_KC), 
+                   ifelse(disease =="bladder", list(TS_4=TS_4, TR_4=TR_4, TS_8=TS_8,TR_8=TR_8),
+                          list(TS_4=TS_4, TR_4=TR_4, TS_8_KC=TS_8_KC, TR_8_KC =TR_8_KC)))
+  
+  return(output)
+}
+
+######################################################
+
+f.validity.sex.matrix <- function(m.M_8s){
+
+a.Temp <- array(data = NA, dim = c(nsample, n.t+1, n.s_long))
+for (i in 1:n.s_long) {
+  a.Temp[ , ,i] <- (m.M_8s == i)
+}
+
+if(cohort ==1){
+  a.Temp <- a.Temp*pop[,"weighting"]
+}
+
+a.Male <- a.Temp[pop[, "sex"] == 1, ,]
+if(cohort ==1){
+  TR_m <- as.matrix(colSums(a.Male))/ sum(pop[, "weighting"]*pop[, "sex"])
+} else {TR_m <- as.matrix(colSums(a.Male))/ sum(pop[, "sex"])}
+rownames(TR_m) <- paste("Cycle", 0:n.t, sep = " ")  # name the rows
+colnames(TR_m) <- v.n_long     # name the columns    
+
+a.Female <- a.Temp[pop[ ,"sex"] == 0, ,]
+if(cohort ==1){
+  TR_f <- as.matrix(colSums(a.Female))/ sum(pop[, "weighting"]*(1-pop[, "sex"]))
+} else {TR_f <- as.matrix(colSums(a.Female))/ sum((1-pop[, "sex"]))}
+rownames(TR_f) <- paste("Cycle", 0:n.t, sep = " ")  # name the rows
+colnames(TR_f) <- v.n_long     # name the columns 
+
+output <- list(TR_m=TR_m,
+               TR_f=TR_f)
+
+return(output)
+
+}
+

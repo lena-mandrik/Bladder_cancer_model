@@ -147,11 +147,10 @@ out_names <- c("TOTAL_COSTS", "Cancer_COSTS", "DIAG_COSTS", "SCREEN_COSTS",
                "HG_St1_SCRN", "HG_St2_SCRN", 
                "HG_St3_SCRN", "HG_St4_SCRN",  
                "HG_St1_MORT", "HG_St2_MORT", "HG_St3_MORT", "HG_St4_MORT", 
-               "Die_TURBT", 
+               "Die_Surgery", 
                "KC_St1_SCRN", "KC_St2_SCRN",
                "KC_St3_SCRN", "KC_St4_SCRN",  
                "KC_St1_MORT", "KC_St2_MORT", "KC_St3_MORT", "KC_St4_MORT", 
-               "Die_KC_SUR", 
                "Invite_DS","Respond_DS", "Positive_DS", "Respond_Cyst", "Diagnostic_Cyst", "Surgery",
                "FP_BC", "FN_BC", "FP_KC", "FN_KC")
 

@@ -86,7 +86,7 @@ TP_mort
  #' m.State: matrix containing health states
  #' @return matrix of individualised values (0 or 1) for each person
  #' 
-f.return.C.death <-function(pop, m.Diag, m.State, .env){
+f.return.C.death <-function(pop, m.Diag, m.State, .env, m.Rand, t){
  
 # Calculate individualised transition probs 
 TP_C.mort <- f.calc.Cmort.TP(pop, m.Diag, .env)
@@ -100,6 +100,7 @@ new_C4_death <- 1*((m.Rand[ ,"Death_C", t] < TP_C.mort[,"TP.C.4.mort"]) & m.Stat
 # Update the mortality with a possibility for some BC at stage 4 to be undiagnosed death 
 died_undiagnosed <- 1*(m.Rand[ ,"Death_C_undiag", t] < (1-exp(.env$P.ungiag.dead * ((pop[, "age"] - 80) * (1*(pop[, "age"] > 80)))))
                        & m.Diag[ ,"yr_diag"]==1
+                       & m.Diag[ ,"Sympt_diag"]==1
                        & new_C4_death[]==1)
 
 new_C4_death[died_undiagnosed[] ==1] <-0    
@@ -268,39 +269,3 @@ f.C.stages <- function(m.M_8s, m.C.T.to.Stage, m.M, m.Diag, t, anal.disease){
   return(m.M_8s)
 }
 
-#######################
-# Function for allocating kidney cancer states
-#############################
-f.KC.stages <- function(m.M_8s, m.KC.T.to.Stage, m.M, m.Diag, t){
-  
-  # Update m.M_8s matrix with the states for those who have HG cancer
-  m.M_8s[, t+1] <- m.M[, t+1]
-  m.M_8s[, t+1][which(m.M[, t+1]==2 | m.M[, t+1]==3)] <- 1 #Replace with 1 (NO kidney cancer) for all with bladder cancer
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.M_8s[, t] ==8, 8) #Replace with BC death those who died with BC before this cycle
-  
-  # Replace with the relevant stages for those who were not diagnosed but has cancer
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==4 & m.Diag[,"KC_state"]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.KC.T.to.Stage[ ,"T.onsetToStage2"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==4)), 4) #Replace for stage 2
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==4 & m.Diag[,"KC_state"]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.KC.T.to.Stage[ ,"T.onsetToStage3"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==6)), 6) #Replace for stage 3
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], (m.M[, t+1]==4 & m.Diag[,"KC_state"]==1 & m.Diag[, "yr_diag"] ==0 & (ceiling(m.KC.T.to.Stage[ ,"T.onsetToStage4"])==m.Diag[,"yr_onset"]|m.M_8s[, t]==7)), 7) #Replace for stage 4
-  
-  # replace with the stage for those who were diagnosed assuming that they don't progress
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==1 & m.Diag[,"KC_state"]==1 & m.M[, t+1] != 5, 3) #replace the stage at diagnosis for those who were diagnosed
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==2 & m.Diag[,"KC_state"]==1 & m.M[, t+1] != 5, 4) #replace the stage at diagnosis for those who were diagnosed
-  m.M_8s[, t+1] <- replace(m.M_8s[, t+1], m.Diag[, "Stage_diag"]==3 & m.Diag[,"KC_state"]==1 & m.M[, t+1] != 5, 6) #replace the stage at diagnosis for those who were diagnosed
-
-  return(m.M_8s)
-}
-##################################
-# Function updating the matrix m.BC.T.to.Stage with shorter or longer progression based whether the age is below or above 60
-
-#f.HG.stages <- function(m.BC.T.to.Stage, pop){
- # speed_by_age =1.0001
-  
-  # Set up benchmark as 60
- # age_diff_from_benchmark = pop[,"age"] - 60
-  
- # age_adjustment_factor = ifelse(age_diff_from_benchmark >= 0, speed_by_age*age_diff_from_benchmark, abs(age_diff_from_benchmark) * (1-(speed_by_age-1)))
-  
-#  m.BC.T.to.Stage= m.BC.T.to.Stage*(pop[ ,"age"]-60)*speed_by_age
-#  m.BC.T.to.Stage
-#}

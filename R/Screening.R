@@ -26,14 +26,16 @@ f.calc.screen.params <- function(pop, m.Screen, m.M, t, m.State, m.State.KC, dis
     if(disease =="bladder_kidney"){
       Diag_kidney =f.diag.params(m.State.KC, .env=e.KC, "KC")
       Diag_bladder =f.diag.params(m.State, .env=e.BC, "BC")
-      scr.Params <- cbind(DS_uptake, Diag_uptake, Diag_bladder, Diag_kidney)
     } else if(disease =="bladder"){
       Diag_bladder =f.diag.params(m.State, .env=e.BC, "BC")
-      scr.Params <- cbind(DS_uptake, Diag_uptake, Diag_bladder)
+      Diag_kidney =matrix(0, nrow=nsample, ncol =3)
+      colnames(Diag_kidney) =c("DS_diag_KC", "GP_diag_KC", "Cyst_diag_KC")
     } else{
       Diag_kidney =f.diag.params(m.State.KC, .env=e.KC, "KC")
-      scr.Params <- cbind(DS_uptake, Diag_uptake, Diag_kidney)
+      Diag_bladder =matrix(0, nrow=nsample, ncol =3)
+      colnames(Diag_bladder) =c("DS_diag_BC", "GP_diag_BC", "Cyst_diag_BC")
     }
+    scr.Params <- cbind(DS_uptake, Diag_uptake, Diag_bladder, Diag_kidney)
     
     return(scr.Params)
   }
@@ -149,17 +151,18 @@ f.DS_screen <- function(m.Screen, m.Diag, m.M, m.Rand, pop, t, scr.Params, DS_ag
   m.Screen[ ,t+1 , "Surgery"] <- m.Screen[ ,t+1 , "Diagnostic_Cyst"]
   
   # Assign a probability to die during surgery based on which disease is modelled
-  if(disease=="bladder" | disease=="bladder_kidney"){Mort.TURBT=e.BC$Mort.TURBT} else{Mort.TURBT=e.KC$Mort.TURBT}
+  if(disease=="bladder" | disease=="bladder_kidney"){Mort.surg=e.BC$Mort.TURBT} else{Mort.surg=e.KC$Mort.TURBT}
   
   #Decide who died from TURBT
-  m.Screen[ ,t+1 , "Die_Surgery"] <- ((m.Rand[ ,"Die_Surgery", t] < Mort.TURBT) & m.Screen[ ,t+1 , "Surgery"]==1)*1
+  m.Screen[ ,t+1 , "Die_Surgery"] <- ((m.Rand[ ,"Die_Surgery", t] < Mort.surg) & m.Screen[ ,t+1 , "Surgery"]==1)*1
     
   #Decide who had FP (everyone without cancer and FP dipstick and cystoscopy)
   m.Screen[ ,t+1 , "FP_BC"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & m.Rand[ ,"Positive_Cyst", t] < scr.Params[, "Cyst_diag_BC"] & m.M[,t+1]==1)*1
   m.Screen[ ,t+1 , "FP_KC"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==1 & m.Rand[ ,"Positive_Cyst", t] < scr.Params[, "Cyst_diag_KC"] & m.M[,t+1]==1)*1
   
   #Decide who had FN (everyone with cancer who hasn't been diagnosed)
-  m.Screen[ ,t+1 , "FN"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==0 & (m.M[,t+1]==2 | m.M[,t+1]==3 | m.M[,t+1]==4))*1
+  m.Screen[ ,t+1 , "FN_BC"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==0 & (m.M[,t+1]==2 | m.M[,t+1]==3))*1
+  m.Screen[ ,t+1 , "FN_KC"] <- (m.Screen[ ,t+1 , "Diagnostic_Cyst"]==0 & (m.M[,t+1]==4))*1
   
   
   
@@ -191,18 +194,19 @@ f.screen_diag <- function(m.Screen, m.State, m.State.KC, m.Diag, pop, t) {
   m.Diag[, "FP_BC"] <- m.Diag[, "FP_BC"] + m.Screen[ ,t+1, "FP_BC"]
   m.Diag[, "FP_KC"] <- m.Diag[, "FP_KC"] + m.Screen[ ,t+1, "FP_KC"]
   
-  # Record diagnostic parameters fro those diagnosed through screening
-  m.Diag[, "Diag"] <- m.Diag[, "Diag"] + m.Screen[ ,t+1 , "HG"] + m.Screen[ ,t+1 , "KC"]
-  m.Diag[, "Screen_diag"] <- m.Diag[, "Screen_diag"] + m.Screen[ ,t+1 , "HG"] + m.Screen[ ,t+1 , "KC"]
-  m.Diag[, "Age_diag"] <- m.Diag[, "Age_diag"] + (pop[, "age"] * m.Screen[ ,t+1 , "HG"])+ (pop[, "age"] * m.Screen[ ,t+1 , "KC"])
+  # Record diagnostic parameters for those diagnosed through screening
+  m.Diag[, "Diag"] <- m.Diag[, "Diag"] + m.Screen[ ,t+1 , "HG"] + m.Screen[ ,t+1 , "KC"] + m.Screen[ ,t+1, "FP_KC"]
+  m.Diag[, "Screen_diag"] <- m.Diag[, "Screen_diag"] + m.Screen[ ,t+1 , "HG"] + m.Screen[ ,t+1 , "KC"] + m.Screen[ ,t+1, "FP_KC"]
+  m.Diag[, "Age_diag"] <- m.Diag[, "Age_diag"] + (pop[, "age"] * m.Screen[ ,t+1 , "HG"])+ (pop[, "age"] * m.Screen[ ,t+1 , "KC"])+ (pop[, "age"] * m.Screen[ ,t+1, "FP_KC"])
   
   m.Diag[, "Stage_diag"] <- m.Diag[, "Stage_diag"] + 
     ((m.State[, "St1_HG"] * 1 + m.State[, "St2_HG"] * 2 + m.State[, "St3_HG"] * 3+ m.State[, "St4_HG"] * 4)* m.Screen[ ,t+1 , "HG"])+
-  ((m.State.KC[, "St1_HG"] * 1 + m.State.KC[, "St2_HG"] * 2 + m.State.KC[, "St3_HG"] * 3+ m.State.KC[, "St4_HG"] * 4)* m.Screen[ ,t+1 , "KC"])
+  ((m.State.KC[, "St1_HG"] * 1 + m.State.KC[, "St2_HG"] * 2 + m.State.KC[, "St3_HG"] * 3+ m.State.KC[, "St4_HG"] * 4)* m.Screen[ ,t+1 , "KC"])+
+    m.State.KC[, "St1_HG"] * 1*m.Screen[ ,t+1, "FP_KC"]
   
-  m.Diag[, "LG_diag"] <- m.Diag[, "LG_diag"] + m.Screen[ ,t+1 , "LG"] #+m.Screen[ ,t+1 , "FP_BC"]
-  m.Diag[, "LG_screen_diag"] <- m.Diag[, "LG_screen_diag"] + m.Screen[ ,t+1 , "LG"]#+m.Screen[ ,t+1 , "FP"]
-  m.Diag[, "LG_age_diag"] <- m.Diag[, "LG_age_diag"] + (pop[, "age"] * m.Screen[ ,t+1 , "LG"]) #+ (pop[, "age"] *m.Screen[ ,t+1 , "FP"])
+  m.Diag[, "LG_diag"] <- m.Diag[, "LG_diag"] + m.Screen[ ,t+1 , "LG"] +m.Screen[ ,t+1 , "FP_BC"]
+  m.Diag[, "LG_screen_diag"] <- m.Diag[, "LG_screen_diag"] + m.Screen[ ,t+1 , "LG"]+m.Screen[ ,t+1 , "FP_BC"]
+  m.Diag[, "LG_age_diag"] <- m.Diag[, "LG_age_diag"] + (pop[, "age"] * m.Screen[ ,t+1 , "LG"]) + (pop[, "age"] *m.Screen[ ,t+1 , "FP_BC"])
   
   m.Diag[, "yr_diag"] <- m.Diag[, "LG_yr_diag"]
   m.Diag[, "yr_diag"] <- replace(m.Diag[, "yr_diag"], yr_diag >0, yr_diag[yr_diag>0])
